@@ -22,7 +22,7 @@ import hk.ust.csit5930.model.Relationship;
 public class Spider {
     // Default entry point, can delegate users to pass their own
     private String URL;
-    private final int NUM_PAGES = 30; // Number of pages to crawl
+    private final int NUM_PAGES = 300; // Number of pages to crawl
     private static H2DBOperator dbOperator;
 
     public Spider () {
@@ -125,10 +125,10 @@ public class Spider {
             System.out.printf("Page ID: %s, Title: %s\n", 
                         page.getId(), page.getTitle());
         });
-        List<Relationship> relationships = dbOperator.getAllRelationships();
-        relationships.forEach(relationship -> {
-            System.out.printf("Relationship ID: %s, Parent URL: %s, Child URL: %s\n",
-                        relationship.getId(), relationship.getParentUrl(), relationship.getChildUrl());
-        });
+        // List<Relationship> relationships = dbOperator.getAllRelationships();
+        // relationships.forEach(relationship -> {
+        //     System.out.printf("Relationship ID: %s, Parent URL: %s, Child URL: %s\n",
+        //                 relationship.getId(), relationship.getParentUrl(), relationship.getChildUrl());
+        // });
     }
 }
