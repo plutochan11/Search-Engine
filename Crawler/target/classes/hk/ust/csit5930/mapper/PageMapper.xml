@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace = "hk.ust.csit5930.mapper.PageMapper">
+    <resultMap id="PageResultMap" type="Page">
+        <id column="id" property="id" />
+        <result column="title" property="title" />
+        <result column="url" property="url" />
+        <result column="content" property="content" />
+        <result column = "lastModified" property = "last_modified" />
+    </resultMap>
+
+    <select id = "getAll" resultMap = "PageResultMap">
+        SELECT * FROM pages
+    </select>
+
+    <!-- <select id = "getPageById" parameterType = "int" resultType = "Page">
+        SELECT * FROM pages WHERE id = #{id}
+    </select>
+
+    <select id = "getPageByUrl" parameterType = "String" resultType = "Page">
+        SELECT * FROM pages WHERE url = #{url}
+    </select> -->
+
+    <select id = "getParent" parameterType = "String" resultType = "Page">
+        SELECT * FROM pages p JOIN relationships r ON p.url = r.parent_url
+        WHERE r.child_url = #{childUrl}
+    </select>
+
+    <select id = "getChildren" parameterType = "String" resultMap = "PageResultMap">
+        SELECT * FROM pages p JOIN relationships r ON p.url = r.child_url
+        WHERE r.parent_url = #{parentUrl}
+    </select>
+
+    <insert id = "insert" parameterType = "Page">
+        INSERT INTO pages (url, title, content, last_modified)
+        VALUES (#{url}, #{title}, #{content}, #{lastModified})
+    </insert>
+
+    <update id = "updateByUrl" parameterType = "Page">
+        UPDATE pages SET 
+            url = #{url},
+            title = #{title},
+            content = #{content},
+            last_modified = #{lastModified}
+        <!-- Only update when the new last modified date is greater than the old one-->
+        WHERE url = #{url} AND last_modified &lt; #{lastModified}
+    </update>
+
+    <insert id = "insertRelationship">
+        INSERT INTO relationships (parent_url, child_url)
+        VALUES (#{parentUrl}, #{childUrl})
+    </insert>
+
+    <insert id = "insertPlaceHolder" parameterType = "String">
+        INSERT INTO pages (url) VALUES (#{url})
+    </insert>
+
+    <select id="findPagesWithRelationships" resultType="hk.ust.csit5930.model.Page">
+        SELECT p.* FROM pages p 
+        JOIN page_relationships r ON p.url = r.parent_url 
+        WHERE r.child_url = #{url}
+    </select>
+    
+    <update id="updateLastModifiedForUrls">
+        UPDATE pages 
+        SET last_modified = #{timestamp} 
+        WHERE url IN 
+        <foreach item="url" collection="urls" open="(" separator="," close=")">
+            #{url}
+        </foreach>
+    </update>
+
+    <select id = "getAllRelationships" resultType = "hk.ust.csit5930.model.Relationship">
+        SELECT * FROM relationships
+    </select>
+</mapper>
