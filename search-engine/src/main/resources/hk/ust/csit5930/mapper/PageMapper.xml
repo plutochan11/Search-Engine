@@ -72,4 +72,8 @@
             #{url}
         </foreach>
     </update>
+
+    <select id = "getAllRelationships" resultType = "hk.ust.csit5930.model.Relationship">
+        SELECT * FROM relationships
+    </select>
 </mapper>
