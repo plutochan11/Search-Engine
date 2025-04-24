@@ -17,6 +17,7 @@ import org.apache.ibatis.exceptions.PersistenceException;
 import org.jsoup.Connection.Response;
 import org.jsoup.nodes.Document;
 import hk.ust.csit5930.model.Page;
+import hk.ust.csit5930.model.Relationship;
 
 public class Spider {
     // Default entry point, can delegate users to pass their own
@@ -123,6 +124,11 @@ public class Spider {
         pages.forEach(page -> {
             System.out.printf("Page ID: %s, Title: %s\n", 
                         page.getId(), page.getTitle());
+        });
+        List<Relationship> relationships = dbOperator.getAllRelationships();
+        relationships.forEach(relationship -> {
+            System.out.printf("Relationship ID: %s, Parent URL: %s, Child URL: %s\n",
+                        relationship.getId(), relationship.getParentUrl(), relationship.getChildUrl());
         });
     }
 }

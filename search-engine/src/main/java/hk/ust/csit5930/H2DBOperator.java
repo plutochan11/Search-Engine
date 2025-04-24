@@ -13,6 +13,7 @@ import org.apache.ibatis.session.SqlSessionFactoryBuilder;
 
 import hk.ust.csit5930.mapper.PageMapper;
 import hk.ust.csit5930.model.Page;
+import hk.ust.csit5930.model.Relationship;
 
 public class H2DBOperator {
     private SqlSessionFactory sqlSessionFactory;
@@ -85,16 +86,27 @@ public class H2DBOperator {
         }
     }
 
-    public void insertPlaceHolder(String url) {
+    public List<Relationship> getAllRelationships() {
         try (SqlSession session = sqlSessionFactory.openSession()) {
             PageMapper mapper = session.getMapper(PageMapper.class);
-            mapper.insertPlaceHolder (url);
-            session.commit();
+            return mapper.getAllRelationships();
         } catch (Exception e) {
-            System.err.println("Failed to insert placeholder: " + e.getMessage());
+            System.err.println("Failed to get all relationships: " + e.getMessage());
             e.printStackTrace();
+            return null;
         }
     }
+
+    // public void insertPlaceHolder(String url) {
+    //     try (SqlSession session = sqlSessionFactory.openSession()) {
+    //         PageMapper mapper = session.getMapper(PageMapper.class);
+    //         mapper.insertPlaceHolder (url);
+    //         session.commit();
+    //     } catch (Exception e) {
+    //         System.err.println("Failed to insert placeholder: " + e.getMessage());
+    //         e.printStackTrace();
+    //     }
+    // }
 
     // public Page getPageById(int id) {
     //     try (SqlSession session = sqlSessionFactory.openSession()) {
