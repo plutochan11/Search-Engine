@@ -87,7 +87,10 @@ public class Spider {
 
                 visitedUrls.add(url);
                 pageCount++;
-                System.out.println("Fetched " + pageCount + " pages");
+                // Print the intermediate results
+                if (pageCount % 10 == 0 || pageCount == 1) {
+                    System.out.println("Crawled " + pageCount + " pages...");
+                }
 
                 /*
                     Find links in the page and queue them
