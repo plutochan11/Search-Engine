@@ -25,13 +25,17 @@ public class Spider {
     private final int NUM_PAGES = 300; // Number of pages to crawl
     private static H2DBOperator dbOperator;
 
+
     public Spider () {
         URL = "https://www.cse.ust.hk/~kwtleung/COMP4321/testpage.htm";
         dbOperator = new H2DBOperator();
         dbOperator.setup(); // Setup the database
     }
 
-    // User-specified-entry version of constructor
+    /**
+     * Constructor for user-specified entry point
+     * @param entryUrl
+     */
     public Spider (String entryUrl) {
         URL = entryUrl;
         dbOperator = new H2DBOperator();
@@ -39,6 +43,7 @@ public class Spider {
     }
 
     public void crawl() {
+        long startTime = System.currentTimeMillis();
         // Count to keep track of the number of pages crawled successfully
         int pageCount = 0;
 
@@ -104,8 +109,8 @@ public class Spider {
                 e.printStackTrace();
             }
         }
-
-        System.out.println("Finished crawling " + pageCount + " pages.");
+        long endTime = System.currentTimeMillis();
+        System.out.printf("Successfully crawled %d pages in %s s\n", pageCount, (endTime - startTime) / 1000);
     }
 
     private Timestamp parseLastModified(String lastModifiedDate) {
