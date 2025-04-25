@@ -9,7 +9,7 @@ import hk.ust.csit5930.model.Relationship;
 public interface PageMapper {
     // Page getPageById(int id);
     // Page getPageByUrl(String url);
-    List<Page> getAll();
+    List<Page> getAllPages();
     int insert(Page page);
     int updateById(Page page);
 

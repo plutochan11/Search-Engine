@@ -67,7 +67,7 @@ public class H2DBOperator {
         List<Page> pages = null;
         try (SqlSession session = sqlSessionFactory.openSession()) {
             PageMapper mapper = session.getMapper(PageMapper.class);
-            pages = mapper.getAll();
+            pages = mapper.getAllPages();
         } catch (Exception e) {
             System.err.println("Failed to update page: " + e.getMessage());
             System.exit(0);
