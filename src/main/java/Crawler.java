@@ -91,6 +91,7 @@ public class Crawler
 				linkMatrix[currentDocId - 1][linkedDocId - 1] = 1;
 			}
 		}
+
 		return indexedDocs; // Returns docId-based structure
 
 	}

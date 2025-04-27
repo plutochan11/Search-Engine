@@ -27,11 +27,6 @@ public class Main {
             // Retrieve the link matrix
             int[][] linkMatrix = crawler.getLinkMatrix();
 
-            // Run PageRank using the matrix
-            PageRank pageRank = new PageRank(linkMatrix);
-            pageRank.computePageRank(5, 0.8);
-            pageRank.printRanks();
-
             // Step 2: Process each page title & body separately
             // Initial index mapping
             Map<String, TermInfo> termToTermId = new HashMap<>(); //Term Index: term ->termID, document frequency
@@ -74,9 +69,35 @@ public class Main {
             System.out.println("Indexing Duration: " + (indexEndTime - crawlerEndTime));
 
             //testing
+            // Run PageRank using the matrix
+            PageRank pageRank = new PageRank(linkMatrix);
+            pageRank.computePageRank(5, 0.8);
+            Map<Integer, Double> pageRankScores = pageRank.getPageRankScores();
+
             Vector<String> query = new Vector<>(Arrays.asList("hong", "is", "Kong"));
             List<String> filterQuery = new ArrayList<>(processWords(query, stopStem).keySet()); // Correct conversion
-            CosSim.calculateCosSim(filterQuery, termToTermId, bodyInvertedIndex.getHashtable(), indexedDocs.size());
+            Map<Integer, Double> cosineScores =CosSim.calculateCosSim(filterQuery, termToTermId, bodyInvertedIndex.getHashtable(), indexedDocs.size());
+
+            // Combine PageRank with cosine similarity
+            Map<Integer, Double> combinedScores = new HashMap<>();
+
+            for (Integer docId : cosineScores.keySet()) {
+                double cosSimScore = cosineScores.get(docId);
+                double pageRankScore = pageRankScores.getOrDefault(docId, 0.0); // Default PageRank to 0 if missing
+                combinedScores.put(docId, cosSimScore * pageRankScore); // Adjust ranking
+            }
+
+            // Rank documents based on combined scores
+            List<Map.Entry<Integer, Double>> rankedDocs = new ArrayList<>(combinedScores.entrySet());
+            rankedDocs.sort((a, b) -> Double.compare(b.getValue(), a.getValue())); // Sort descending
+
+            // Print the final ranked documents
+            System.out.println("\nFinal Ranked Documents (CosSim * PageRank):");
+            for (Map.Entry<Integer, Double> entry : rankedDocs) {
+                System.out.printf("Document %d -> Score: %.5f%n", entry.getKey(), entry.getValue());
+            }
+
+
 
         } catch (IOException | ParserException e) {
         System.err.println("Error: " + e.getMessage());

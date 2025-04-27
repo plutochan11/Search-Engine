@@ -1,4 +1,6 @@
 import java.util.Arrays;
+import java.util.Map;
+import java.util.HashMap;
 
 public class PageRank {
     private int[][] linkMatrix;
@@ -39,6 +41,14 @@ public class PageRank {
             ranks[i] /= sum;
         }
     }
+    public Map<Integer, Double> getPageRankScores() {
+        Map<Integer, Double> pageRankScores = new HashMap<>();
+        for (int i = 0; i < numPages; i++) {
+            pageRankScores.put(i + 1, ranks[i]); // Mapping docId (1-based index) to PageRank
+        }
+        return pageRankScores;
+    }
+
 
     public void printRanks() {
         System.out.println("PageRank Scores:");

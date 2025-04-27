@@ -9,12 +9,13 @@ public class CosSim {
     /**
      * Calculates the term weights for the given query.
      *
-     * @param query             List of tokens in the search query.
-     * @param termToTermId      Mapping of term to TermInfo (containing termID and df).
-     * @param bodyIndex List of inverted index records.
-     * @param documentSize       Size of all document IDs (used for determining N).
+     * @param query        List of tokens in the search query.
+     * @param termToTermId Mapping of term to TermInfo (containing termID and df).
+     * @param bodyIndex    List of inverted index records.
+     * @param documentSize Size of all document IDs (used for determining N).
+     * @return
      */
-    public static void calculateCosSim(
+    public static Map<Integer, Double> calculateCosSim(
             List<String> query,
             Map<String, TermInfo> termToTermId,
             HTree bodyIndex,
@@ -24,7 +25,7 @@ public class CosSim {
         int L = query.size();
         if (L == 0) {
             System.out.println("Query has no valid terms after stopword removal.");
-            return;
+            return null;
         }
 
         // Create a 1 x L query vector Q and initialize with 1's.
@@ -126,6 +127,7 @@ public class CosSim {
         for (Map.Entry<Integer, Double> entry : rankedDocs) {
             System.out.printf("Document %d -> Score: %.5f%n", entry.getKey(), entry.getValue());
         }
+        return similarityScores;
     }
 
 
