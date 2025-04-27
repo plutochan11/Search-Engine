@@ -19,13 +19,26 @@ import org.jsoup.nodes.Document;
 import hk.ust.csit5930.model.Page;
 import hk.ust.csit5930.model.Relationship;
 
+
+/**
+ * Spider class to crawl web pages and store them in a database.
+ * <p> This class uses Jsoup to fetch and parse web pages, and H2DBOperator
+ * to interact with the H2 database. It implements a breadth-first search (BFS)
+ * algorithm to crawl the web pages.
+ * 
+ * @author pluto
+ */
 public class Spider {
     // Default entry point, can delegate users to pass their own
     private String URL;
     private final int NUM_PAGES = 300; // Number of pages to crawl
     private static H2DBOperator dbOperator;
 
-
+    /**
+     * Default constructor with a preset entry point.
+     * The default entry point is "https://www.cse.ust.hk/~kwtleung/COMP4321/testpage.htm".
+     * <p> This constructor initializes the database operator and sets up the database.
+     */
     public Spider () {
         URL = "https://www.cse.ust.hk/~kwtleung/COMP4321/testpage.htm";
         dbOperator = new H2DBOperator();
@@ -39,9 +52,13 @@ public class Spider {
     public Spider (String entryUrl) {
         URL = entryUrl;
         dbOperator = new H2DBOperator();
-        // dbOperator.setup(); // Setup the database
+        dbOperator.setup(); // Setup the database
     }
 
+    /**
+     * Crawl web pages as per the number of pages specified.
+     * <p> Cycles are handled by a hashset to check for duplicates.
+     */
     public void crawl() {
         long startTime = System.currentTimeMillis();
         // Count to keep track of the number of pages crawled successfully
@@ -116,6 +133,12 @@ public class Spider {
         System.out.printf("Successfully crawled %d pages in %s s\n", pageCount, (endTime - startTime) / 1000);
     }
 
+    /**
+     * Parse the last modified date from the HTTP headers.
+     * <p> This method converts the last modified date string to a Timestamp object.
+     * @param lastModifiedDate The last modified date string from the HTTP headers.
+     * @return A Timestamp object representing the last modified date, or null if not available.
+     */
     private Timestamp parseLastModified(String lastModifiedDate) {
         Timestamp lastModified = null; // It's possible that the page doesn't have a last modified date
         if (lastModifiedDate != null) {
@@ -127,7 +150,11 @@ public class Spider {
         return lastModified;
     }
 
-    public void checkResults() {
+    /**
+     * Display all entries in the database.
+     * <p> This method retrieves all pages from the database and prints them.
+     */
+    public void displayAllPages() {
         List<Page> pages = dbOperator.getAllPages();
         pages.forEach(page -> {
             System.out.printf("Page ID: %s, Title: %s\n", 

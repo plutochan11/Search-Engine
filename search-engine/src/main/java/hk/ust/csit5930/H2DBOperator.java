@@ -15,10 +15,16 @@ import hk.ust.csit5930.mapper.PageMapper;
 import hk.ust.csit5930.model.Page;
 import hk.ust.csit5930.model.Relationship;
 
+/**
+ * An operator that provides methods to interact with the H2 database.
+ */
 public class H2DBOperator {
     private SqlSessionFactory sqlSessionFactory;
     // private PageMapper pageMapper;
 
+    /**
+     * Initialises a SqlSessionFactory using the MyBatis configuration file.
+     */
     public H2DBOperator() {
         // Lazy load the SQL session factory
         String resource = "mybatis-config.xml";
@@ -33,6 +39,14 @@ public class H2DBOperator {
         H2DBSetup.setup();
     }
 
+    /**
+     * Inserts a new page into the database.
+     *
+     * @param url          The URL of the page.
+     * @param title        The title of the page.
+     * @param content      The content of the page.
+     * @param lastModified The last modified timestamp of the page.
+     */
     public void insert (String url, String title, String content, Timestamp lastModified) {
         try (SqlSession session = sqlSessionFactory.openSession()) {
             PageMapper mapper = session.getMapper(PageMapper.class);
@@ -75,6 +89,12 @@ public class H2DBOperator {
         return pages;
     }
 
+    /**
+     * Inserts a relationship between two pages into the database.
+     *
+     * @param parentUrl The URL of the parent page.
+     * @param childUrl  The URL of the child page.
+     */
     public void insertRelationship(String parentUrl, String childUrl) {
         try (SqlSession session = sqlSessionFactory.openSession()) {
             PageMapper mapper = session.getMapper(PageMapper.class);

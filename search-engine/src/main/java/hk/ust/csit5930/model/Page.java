@@ -6,6 +6,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * A Page POJO that represents a web page.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

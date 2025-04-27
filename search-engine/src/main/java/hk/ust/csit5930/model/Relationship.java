@@ -4,6 +4,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * A Relationship POJO that represents the parent-child relationship between two pages.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
