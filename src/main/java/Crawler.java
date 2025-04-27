@@ -91,15 +91,6 @@ public class Crawler
 				linkMatrix[currentDocId - 1][linkedDocId - 1] = 1;
 			}
 		}
-
-		// 打印链接矩阵（仅用于调试）
-		for (int i = 0; i < n; i++) {
-			for (int j = 0; j < n; j++) {
-				System.out.print(linkMatrix[i][j] + " ");
-			}
-			System.out.println();
-		}
-
 		return indexedDocs; // Returns docId-based structure
 
 	}
