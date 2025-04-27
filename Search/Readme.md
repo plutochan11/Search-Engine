@@ -16,6 +16,19 @@ A Java-based web search engine with crawling, indexing, and ranking capabilities
   - **Combined score** (cosine similarity × PageRank).
 ---
 
+```mermaid
+graph LR
+  A[Crawler] -->|docIdToUrl| B[Main]
+  B -->|termToTermId| C[SearchEngine]
+  D[CosSim] -->|cosineScores| C
+  E[PageRank] -->|pageRankScores| C
+
+  style A fill:#f9f,stroke:#333
+  style B fill:#bbf,stroke:#333
+  style C fill:#f96,stroke:#333
+  style D fill:#9f9,stroke:#333
+  style E fill:#9cf,stroke:#333
+```
 ## Components 🧩
 
 | File               | Description                                                                 |
