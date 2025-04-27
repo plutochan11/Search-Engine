@@ -12,7 +12,8 @@ A Java-based web search engine with crawling, indexing, and ranking capabilities
   - **Cosine Similarity (TF-IDF)**: Measures query-document relevance.
   - **PageRank**: Computes page importance based on link structure.
 - **Search Interface**: Returns top 10 results with contextual snippets.
-
+  - **Pure cosine similarity** (TF-IDF)  
+  - **Combined score** (cosine similarity × PageRank).
 ---
 
 ## Components 🧩
