@@ -28,7 +28,12 @@ A Java-based web search engine with crawling, indexing, and ranking capabilities
 | `Main.java`        | Orchestrates crawling, indexing, and interactive searching.                 |
 
 ---
-
+graph LR
+  Crawler -->|docIdToUrl| Main
+  Main -->|termToTermId| SearchEngine
+  CosSim -->|cosineScores| SearchEngine
+  PageRank -->|pageRankScores| SearchEngine
+  
 ## Data Structures 📊
 - **`TermInfo`**: Tracks term metadata (ID, document frequency).
 - **`WordInfo`**: Records term positions and frequencies per document.
