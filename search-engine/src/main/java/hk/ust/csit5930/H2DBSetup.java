@@ -19,6 +19,7 @@ public class H2DBSetup {
         } catch (Exception e) {
             System.err.println("Failed to initialize SQL session factory: ");
             e.printStackTrace();
+            System.exit(1);
         }
     }
 
@@ -32,6 +33,7 @@ public class H2DBSetup {
         } catch (Exception e) {
             System.err.println("Failed to setup database: ");
             e.printStackTrace();
+            System.exit(1);
         }
     }
 }
