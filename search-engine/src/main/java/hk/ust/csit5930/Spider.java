@@ -33,7 +33,7 @@ import hk.ust.csit5930.model.Relationship;
 public class Spider {
     // Default entry point, can delegate users to pass their own
     private String URL;
-    private final int NUM_PAGES = 300; // Number of pages to crawl
+    private final int NUM_PAGES = 297; // Number of pages to crawl
     private static H2DBOperator dbOperator;
     private int[][] linkMatrix; // Adjacency matrix for the graph representation of the web pages
 
@@ -41,21 +41,27 @@ public class Spider {
      * Default constructor with a preset entry point.
      * The default entry point is "https://www.cse.ust.hk/~kwtleung/COMP4321/testpage.htm".
      * <p> This constructor initializes the database operator and sets up the database.
+     * @param setup A boolean flag to indicate whether to set up the database.
      */
-    public Spider () {
+    public Spider (Boolean setup) {
         URL = "https://www.cse.ust.hk/~kwtleung/COMP4321/testpage.htm";
         dbOperator = new H2DBOperator();
-        dbOperator.setup(); // Setup the database
+        if (setup) {
+            dbOperator.setup(); // Setup the database
+        }
     }
 
     /**
      * Constructor for user-specified entry point
      * @param entryUrl
+     * @param setup A boolean flag to indicate whether to set up the database.
      */
-    public Spider (String entryUrl) {
+    public Spider (String entryUrl, Boolean setup) {
         URL = entryUrl;
         dbOperator = new H2DBOperator();
-        dbOperator.setup(); // Setup the database
+        if (setup) {
+            dbOperator.setup(); // Setup the database
+        }
     }
 
     /**
@@ -84,7 +90,10 @@ public class Spider {
                     break;
                 }
 
-                Response urlResponse = Jsoup.connect(url).execute();
+                Response urlResponse = Jsoup.connect(url)
+                        // .timeout(10000)
+                        .userAgent("Mozilla/5.0")
+                        .execute();
 
                 // Extract the last modified date from headers and parse it to a Timestamp
                 Map<String, String> headers = urlResponse.headers();
@@ -109,7 +118,7 @@ public class Spider {
                 pageCount++;
                 // Print the intermediate results
                 if (pageCount % 10 == 0 || pageCount == 1) {
-                    System.out.println("Crawled " + pageCount + " pages...");
+                    System.out.println("Crawled " + pageCount + " pages");
                 }
 
                 /*
@@ -131,6 +140,14 @@ public class Spider {
                 System.err.println("Failed to crawl URL");
                 e.printStackTrace();
             }
+
+            // Show some respect to the server
+            // try {
+            //     Thread.sleep(100); // Sleep for 0.1 seconds to avoid overwhelming the server
+            // } catch (InterruptedException e) {
+            //     System.err.println("Thread interrupted");
+            //     e.printStackTrace();
+            // }
         }
         long endTime = System.currentTimeMillis();
         System.out.printf("Successfully crawled %d pages in %s s\n", pageCount, (endTime - startTime) / 1000);
@@ -159,19 +176,16 @@ public class Spider {
      */
     public void displayAllPages() {
         List<Page> pages = dbOperator.getAllPages();
-        pages.forEach(page -> {
-            System.out.printf("Page ID: %s, Title: %s\n", 
-                        page.getId(), page.getTitle());
-        });
+        pages.parallelStream().filter(page -> page.getId() <= 10)
+            .forEach(page -> {
+                        System.out.printf("Page ID: %s, Title: %s, URL: %s\n", 
+                                    page.getId(), page.getTitle(), page.getUrl());
+            });
         // List<Relationship> relationships = dbOperator.getAllRelationships();
         // relationships.forEach(relationship -> {
         //     System.out.printf("Relationship ID: %s, Parent URL: %s, Child URL: %s\n",
         //                 relationship.getId(), relationship.getParentUrl(), relationship.getChildUrl());
         // });
-    }
-
-    public List<Page> getAllPages() {
-        return dbOperator.getAllPages();
     }
 
     /**
@@ -208,6 +222,11 @@ public class Spider {
         return linkMatrix;
     }
 
+    /**
+     * Return the page content
+     * @param id The page ID
+     * @return The page content as a vector of strings.
+     */
     public Vector<String> getContent(int id) {
         Vector<String> content = new Vector<>();
         String body = dbOperator.getContent(id);
