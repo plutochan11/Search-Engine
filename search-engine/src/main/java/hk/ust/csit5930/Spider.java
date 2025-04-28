@@ -234,12 +234,15 @@ public class Spider {
     /**
      * Return the page content
      * @param id The page ID
-     * @return The page content as a vector of strings.
+     * @return The page content as a vector of individual words.
      */
     public Vector<String> getContent(int id) {
         Vector<String> content = new Vector<>();
         String body = dbOperator.getContent(id);
-        content.add(body);
+        String[] words = body.split("[\\s\\n]+");
+		for (String word : words) {
+			content.add(word);
+		}
         return content;
     }
 }
