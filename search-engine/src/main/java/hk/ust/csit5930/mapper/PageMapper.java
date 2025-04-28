@@ -20,4 +20,6 @@ public interface PageMapper {
     // void insertPlaceHolder(String url);
     int getPageId(String url);
     String getContent(int id);
+    String getUrl(int id);
+    String getTitle(int id);
 }

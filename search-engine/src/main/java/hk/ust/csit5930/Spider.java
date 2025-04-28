@@ -245,4 +245,22 @@ public class Spider {
 		}
         return content;
     }
+
+    /**
+     * Return the page URL
+     * @param id The page ID
+     * @return The page URL as a string.
+     */
+    public String getUrl(int id) {
+        return dbOperator.getUrl(id);
+    }
+
+    /**
+     * Return the page title
+     * @param id The page ID
+     * @return The page title as a string.
+     */
+    public String getTitle(int id) {
+        return dbOperator.getTitle(id);
+    }
 }

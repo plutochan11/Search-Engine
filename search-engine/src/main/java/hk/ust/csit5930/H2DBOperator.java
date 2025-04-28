@@ -164,4 +164,24 @@ public class H2DBOperator {
             return null;
         }
     }
+
+    public String getUrl(int id) {
+        try (SqlSession session = sqlSessionFactory.openSession()) {
+            PageMapper mapper = session.getMapper(PageMapper.class);
+            return mapper.getUrl(id);
+        } catch (Exception e) {
+            System.err.println("Failed to get URL by ID: " + e.getMessage());
+            return null;
+        }
+    }
+
+    public String getTitle(int id) {
+        try (SqlSession session = sqlSessionFactory.openSession()) {
+            PageMapper mapper = session.getMapper(PageMapper.class);
+            return mapper.getTitle(id);
+        } catch (Exception e) {
+            System.err.println("Failed to get title by ID: " + e.getMessage());
+            return null;
+        }
+    }
 }

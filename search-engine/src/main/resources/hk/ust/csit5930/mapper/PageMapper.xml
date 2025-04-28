@@ -94,4 +94,12 @@
     <select id = "getAllRelationships" resultType = "hk.ust.csit5930.model.Relationship">
         SELECT * FROM relationships
     </select>
+
+    <select id = "getUrl" parameterType = "int" resultType = "String">
+        SELECT url FROM pages WHERE id = #{id}
+    </select>
+    
+    <select id = "getTitle" parameterType = "int" resultType = "String">
+        SELECT title FROM pages WHERE id = #{id}
+    </select>
 </mapper>
