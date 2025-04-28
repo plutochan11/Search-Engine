@@ -1,3 +1,6 @@
 .vscode/
 DB/
 # search-engine/target
+
+Crawler.java
+Main.java

@@ -12,8 +12,8 @@
         <result column = "lastModified" property = "last_modified" />
     </resultMap>
 
-    <select id = "getAll" resultMap = "PageResultMap">
-        SELECT * FROM pages
+    <select id = "getAllPages" resultMap = "PageResultMap">
+        SELECT id, title, url FROM pages
     </select>
 
     <!-- <select id = "getPageById" parameterType = "int" resultType = "Page">
@@ -55,6 +55,16 @@
             last_modified = #{lastModified}
         <!-- Only update when the new last modified date is greater than the old one-->
         WHERE url = #{url} AND last_modified &lt; #{lastModified}
+    </update>
+
+    <!-- Compare 2 last modified date to avoid meaningless updates -->
+    <update id = "updateById" parameterType = "Page">
+        UPDATE pages SET 
+            url = #{url},
+            title = #{title},
+            content = #{content},
+            last_modified = #{lastModified}
+        WHERE id = #{id} AND last_modified &lt; #{lastModified}
     </update>
 
     <insert id = "insertRelationship">
