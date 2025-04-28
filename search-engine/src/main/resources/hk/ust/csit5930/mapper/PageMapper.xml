@@ -18,11 +18,15 @@
 
     <!-- <select id = "getPageById" parameterType = "int" resultType = "Page">
         SELECT * FROM pages WHERE id = #{id}
-    </select>
+    </select> -->
 
-    <select id = "getPageByUrl" parameterType = "String" resultType = "Page">
+    <!-- <select id = "getPageByUrl" parameterType = "String" resultType = "Page">
         SELECT * FROM pages WHERE url = #{url}
     </select> -->
+
+    <select id = "getPageId" parameterType = "String" resultType = "int">
+        SELECT id FROM pages WHERE url = #{url}
+    </select>
 
     <select id = "getParent" parameterType = "String" resultType = "Page">
         SELECT * FROM pages p JOIN relationships r ON p.url = r.parent_url
@@ -54,9 +58,9 @@
         VALUES (#{parentUrl}, #{childUrl})
     </insert>
 
-    <insert id = "insertPlaceHolder" parameterType = "String">
+    <!-- <insert id = "insertPlaceHolder" parameterType = "String">
         INSERT INTO pages (url) VALUES (#{url})
-    </insert>
+    </insert> -->
 
     <select id="findPagesWithRelationships" resultType="hk.ust.csit5930.model.Page">
         SELECT p.* FROM pages p 

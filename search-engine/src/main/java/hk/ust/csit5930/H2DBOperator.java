@@ -138,13 +138,13 @@ public class H2DBOperator {
     //     }
     // }
 
-    // public Page getPageByUrl(String url) {
-    //     try (SqlSession session = sqlSessionFactory.openSession()) {
-    //         PageMapper mapper = session.getMapper(PageMapper.class);
-    //         return mapper.getPageByUrl(url);
-    //     } catch (Exception e) {
-    //         System.err.println("Failed to get page by URL: " + e.getMessage());
-    //         return null;
-    //     }
-    // }
+    public int getPageId(String url) {
+        try (SqlSession session = sqlSessionFactory.openSession()) {
+            PageMapper mapper = session.getMapper(PageMapper.class);
+            return mapper.getPageId(url);
+        } catch (Exception e) {
+            System.err.println("Failed to get page id by URL: " + e.getMessage());
+            return -1;
+        }
+    }
 }
