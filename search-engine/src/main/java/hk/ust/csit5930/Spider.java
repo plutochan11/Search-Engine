@@ -35,6 +35,7 @@ public class Spider {
     private String URL;
     private final int NUM_PAGES = 300; // Number of pages to crawl
     private static H2DBOperator dbOperator;
+    private int[][] linkMatrix; // Adjacency matrix for the graph representation of the web pages
 
     /**
      * Default constructor with a preset entry point.
@@ -174,7 +175,7 @@ public class Spider {
     }
 
     /**
-     * Get all relationships from the database.
+     * Get all relationships from the database and construct the link matrix.
      * <p> This method retrieves all relationships from the database and returns them as a map.
      * @return A map of relationships where the key is the parent page ID and the value is a list of child page IDs.
      */
@@ -187,8 +188,23 @@ public class Spider {
             relationshipMap
                 .computeIfAbsent(relationship.getParentId(), k -> new ArrayList<>())
                 .add(relationship.getChildId());
+            
+            // Construct the link matrix as we go
+            constructLinkMatrix(relationship.getParentId(), relationship.getChildId());
         }
         
         return relationshipMap;
+    }
+
+    private void constructLinkMatrix(int parentId, int childId) {
+        linkMatrix[parentId - 1][childId - 1] = 1;
+    }
+
+    /**
+     * Get the link matrix.
+     * @return The link matrix as a 2D array.
+     */
+    public int[][] getLinkMatrix() {
+        return linkMatrix;
     }
 }
