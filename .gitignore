@@ -1,6 +1,6 @@
 .vscode/
 DB/
-# search-engine/target
+search-engine/target
 
 Crawler.java
 Main.java
