@@ -28,6 +28,10 @@
         SELECT id FROM pages WHERE url = #{url}
     </select>
 
+    <select id = "getContent" parameterType = "int" resultType = "String">
+        SELECT content FROM pages WHERE id = #{id}
+    </select>
+
     <select id = "getParent" parameterType = "String" resultType = "Page">
         SELECT * FROM pages p JOIN relationships r ON p.url = r.parent_url
         WHERE r.child_url = #{childUrl}

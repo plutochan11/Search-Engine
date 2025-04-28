@@ -147,4 +147,14 @@ public class H2DBOperator {
             return -1;
         }
     }
+
+    public String getContent(int id) {
+        try (SqlSession session = sqlSessionFactory.openSession()) {
+            PageMapper mapper = session.getMapper(PageMapper.class);
+            return mapper.getContent(id);
+        } catch (Exception e) {
+            System.err.println("Failed to get content by ID: " + e.getMessage());
+            return null;
+        }
+    }
 }

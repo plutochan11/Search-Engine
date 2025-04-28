@@ -19,4 +19,5 @@ public interface PageMapper {
     List<Relationship> getAllRelationships();
     // void insertPlaceHolder(String url);
     int getPageId(String url);
+    String getContent(int id);
 }

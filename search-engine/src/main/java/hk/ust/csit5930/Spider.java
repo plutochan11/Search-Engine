@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
-
+import java.util.Vector;
 import org.jsoup.Jsoup;
 import org.apache.ibatis.exceptions.PersistenceException;
 import org.jsoup.Connection.Response;
@@ -206,5 +206,12 @@ public class Spider {
      */
     public int[][] getLinkMatrix() {
         return linkMatrix;
+    }
+
+    public Vector<String> getContent(int id) {
+        Vector<String> content = new Vector<>();
+        String body = dbOperator.getContent(id);
+        content.add(body);
+        return content;
     }
 }
