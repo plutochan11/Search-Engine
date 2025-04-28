@@ -5,6 +5,8 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -171,7 +173,22 @@ public class Spider {
         return dbOperator.getAllPages();
     }
 
-    public List<Relationship> getAllRelationships() {
-        return dbOperator.getAllRelationships();
+    /**
+     * Get all relationships from the database.
+     * <p> This method retrieves all relationships from the database and returns them as a map.
+     * @return A map of relationships where the key is the parent page ID and the value is a list of child page IDs.
+     */
+    public Map<Integer, List<Integer>> getRelationships() {
+        List<Relationship> relationships = dbOperator.getAllRelationships();
+        Map<Integer, List<Integer>> relationshipMap = new HashMap<>();
+
+        // Convert the list of relationships to a map
+        for (Relationship relationship : relationships) {
+            relationshipMap
+                .computeIfAbsent(relationship.getParentId(), k -> new ArrayList<>())
+                .add(relationship.getChildId());
+        }
+        
+        return relationshipMap;
     }
 }
