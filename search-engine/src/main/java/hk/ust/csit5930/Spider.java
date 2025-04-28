@@ -149,6 +149,9 @@ public class Spider {
             //     e.printStackTrace();
             // }
         }
+        // Initialise the link matrix with the number of pages crawled
+        linkMatrix = new int[pageCount][pageCount];
+
         long endTime = System.currentTimeMillis();
         System.out.printf("Successfully crawled %d pages in %s s\n", pageCount, (endTime - startTime) / 1000);
     }
@@ -196,15 +199,21 @@ public class Spider {
     public Map<Integer, List<Integer>> getRelationships() {
         List<Relationship> relationships = dbOperator.getAllRelationships();
         Map<Integer, List<Integer>> relationshipMap = new HashMap<>();
+        int parentId, childId;
+
+        int numPages = relationships.size(); // Not accurate, just for estimating
 
         // Convert the list of relationships to a map
         for (Relationship relationship : relationships) {
+            // Get the parent and child IDs
+            parentId = dbOperator.getPageId(relationship.getParentUrl());
+            childId = dbOperator.getPageId(relationship.getChildUrl());
             relationshipMap
-                .computeIfAbsent(relationship.getParentId(), k -> new ArrayList<>())
-                .add(relationship.getChildId());
+                .computeIfAbsent(parentId, k -> new ArrayList<>())
+                .add(childId);
             
             // Construct the link matrix as we go
-            constructLinkMatrix(relationship.getParentId(), relationship.getChildId());
+            constructLinkMatrix(parentId, childId);
         }
         
         return relationshipMap;

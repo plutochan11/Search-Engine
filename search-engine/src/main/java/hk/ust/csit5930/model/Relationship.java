@@ -12,6 +12,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class Relationship {
     private int id;
-    private int parentId;
-    private int childId;
+    private String parentUrl;
+    private String childUrl;
 }
