@@ -201,8 +201,6 @@ public class Spider {
         Map<Integer, List<Integer>> relationshipMap = new HashMap<>();
         int parentId, childId;
 
-        int numPages = relationships.size(); // Not accurate, just for estimating
-
         // Convert the list of relationships to a map
         for (Relationship relationship : relationships) {
             // Get the parent and child IDs
