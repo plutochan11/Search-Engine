@@ -1,6 +1,9 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import axios from 'axios';
+
+// API base URL
+const API_BASE_URL = 'http://localhost:8080/search-engine/api';
 
 const query = ref('');
 const allResults = ref([]); 
@@ -11,7 +14,8 @@ const resultsPerPage = 10;
 const currentPage = ref(1);
 const isLoadingMore = ref(false);
 const showSuggestions = ref(false);
-const rankingMethod = ref('cosine'); // Default to cosine similarity
+const rankingMethod = ref('combined'); // Default to combined ranking
+const isApiInitialized = ref(false); // Track if the API is initialized
 
 // All possible suggested queries
 const allSuggestedQueries = [
@@ -51,6 +55,29 @@ const hasMoreResults = computed(() => {
   return visibleResults.value.length < allResults.value.length;
 });
 
+// Check if the API is initialized when the component loads
+const checkApiStatus = async () => {
+  try {
+    isLoading.value = true;
+    // Use the documents endpoint to check if the API is ready
+    const response = await axios.get(`${API_BASE_URL}/documents`);
+    isApiInitialized.value = response.status === 200;
+    isLoading.value = false;
+  } catch (error) {
+    console.error('API not initialized yet:', error);
+    isApiInitialized.value = false;
+    errorMessage.value = 'The search engine is still initializing. Please wait a moment and try again.';
+    isLoading.value = false;
+  }
+};
+
+// Watch for changes to the ranking method
+watch(rankingMethod, () => {
+  if (hasSearched.value && query.value) {
+    search();
+  }
+});
+
 const search = async () => {
   if (!query.value.trim()) return;
   
@@ -61,98 +88,84 @@ const search = async () => {
   showSuggestions.value = false; // Hide suggestions when searching
   
   try {
-    // Simulating API call delay
-    await new Promise(resolve => setTimeout(resolve, 800));
+    // Check if API is initialized before making the search request
+    if (!isApiInitialized.value) {
+      await checkApiStatus();
+      
+      if (!isApiInitialized.value) {
+        throw new Error('Search engine is still initializing. Please try again in a moment.');
+      }
+    }
     
-    // Generate 50 mock documents
-    allResults.value = Array.from({ length: 50 }, (_, i) => {
-      const scoreValue = Math.round((0.99 - (i * 0.02)) * 100) / 100;
-      const baseRankScore = Math.max(scoreValue, 0.01);
-      
-      // Generate sample keywords for query matching
-      const sampleKeywords = [
-        'machine', 'learning', 'artificial', 'intelligence', 'neural', 
-        'networks', 'data', 'science', 'algorithms', 'computing'
-      ];
-      
-      // Extract keywords from query
-      const queryWords = query.value.toLowerCase().split(' ');
-      
-      // Randomly select some keywords that match the query
-      const matchedKeywords = sampleKeywords.filter(word => 
-        queryWords.some(queryWord => word.includes(queryWord))
-      );
-      
-      // Ensure we have at least 2 keywords
-      const docKeywords = matchedKeywords.length >= 2 ? 
-        matchedKeywords : sampleKeywords.slice(0, 5);
-      
-      // Generate single context snippet showing query term appearance
-      const contextSnippet = generateContextSnippet(queryWords);
-      
+    // Make real API call to the Spring Boot backend
+    const response = await axios.get(`${API_BASE_URL}/search`, {
+      params: { 
+        query: query.value,
+        rankBy: rankingMethod.value
+      }
+    });
+    
+    // Map the API response to match our frontend data structure
+    allResults.value = response.data.map(result => {
       return {
-        score: baseRankScore,
-        pageRank: Math.round((0.8 - (i * 0.015)) * 100) / 100,
-        combinedScore: Math.round((baseRankScore * (0.8 - (i * 0.015))) * 100) / 100,
-        title: `Sample Document Title ${i + 1}`,
-        url: `https://example.com/doc${i + 1}`,
-        lastModified: `2025-${Math.floor(Math.random() * 4) + 1}-${Math.floor(Math.random() * 28) + 1}`,
-        size: `${Math.floor(Math.random() * 100) + 1}.${Math.floor(Math.random() * 9) + 1} KB`,
-        keywords: docKeywords.map((word, j) => ({
-          word, 
-          frequency: Math.floor(Math.random() * 20) + 5
-        })),
-        contextSnippet: contextSnippet,
-        parentLinks: Array.from({ length: Math.floor(Math.random() * 3) + 1 }, (_, j) => ({
-          title: `Parent Page ${j + 1} for Doc ${i + 1}`,
-          url: `https://example.com/parent${j + 1}/doc${i + 1}`
-        })),
-        childLinks: Array.from({ length: Math.floor(Math.random() * 4) + 1 }, (_, j) => ({
-          title: `Child Link ${j + 1} for Doc ${i + 1}`,
-          url: `https://example.com/doc${i + 1}/child${j + 1}`
-        }))
+        docId: result.docId,
+        score: result.score,
+        pageRank: result.pageRankScore,
+        combinedScore: result.score, // For combined ranking, the score is already combined
+        title: result.title || 'Untitled Document',
+        url: result.url,
+        lastModified: new Date().toISOString().split('T')[0], // Placeholder
+        size: 'Unknown',
+        keywords: [], // Placeholder
+        snippets: result.snippets || [],
+        contextSnippet: createContextSnippet(result.snippets)
       };
     });
     
-    /* 
-    // This is the actual API call that will be used when your backend is ready
-    const response = await axios.get('YOUR_SEARCH_ENGINE_API_ENDPOINT', {
-      params: { q: query.value }
-    });
-    allResults.value = response.data;
-    */
+    if (allResults.value.length === 0) {
+      errorMessage.value = 'No results found for your query.';
+    }
     
   } catch (error) {
     console.error('Error searching:', error);
-    errorMessage.value = 'An error occurred while searching. Please try again.';
+    errorMessage.value = error.message || 'An error occurred while searching. Please try again.';
+    allResults.value = [];
   } finally {
     isLoading.value = false;
   }
 };
 
-// Generate a single context snippet showing query terms
-const generateContextSnippet = (queryTerms) => {
-  const commonWords = ['the', 'and', 'of', 'to', 'a', 'in', 'for', 'is', 'on', 'that', 'by', 'this', 'with', 'you', 'it'];
-  const beforeWords = [];
-  const afterWords = [];
-  
-  // Generate 5-8 words before
-  for (let j = 0; j < Math.floor(Math.random() * 4) + 5; j++) {
-    beforeWords.push(commonWords[Math.floor(Math.random() * commonWords.length)]);
+// Create a context snippet object from the list of snippets
+const createContextSnippet = (snippets) => {
+  if (!snippets || snippets.length === 0) {
+    return {
+      before: "No context available",
+      highlight: "",
+      after: ""
+    };
   }
   
-  // Get a random query term to highlight
-  const termToHighlight = queryTerms[Math.floor(Math.random() * queryTerms.length)];
+  const snippet = snippets[0]; // Use the first snippet
+  const words = snippet.split(' ');
+  const midIndex = Math.floor(words.length / 2);
   
-  // Generate 5-8 words after
-  for (let j = 0; j < Math.floor(Math.random() * 4) + 5; j++) {
-    afterWords.push(commonWords[Math.floor(Math.random() * commonWords.length)]);
-  }
+  // Try to identify a potential highlight term from the query
+  const queryTerms = query.value.toLowerCase().split(' ');
+  let highlightIndex = words.findIndex(word => 
+    queryTerms.some(term => word.toLowerCase().includes(term))
+  );
+  
+  // If no match found, use the middle word
+  if (highlightIndex === -1) highlightIndex = midIndex;
+  
+  const highlight = words[highlightIndex];
+  const before = words.slice(0, highlightIndex).join(' ');
+  const after = words.slice(highlightIndex + 1).join(' ');
   
   return {
-    before: beforeWords.join(' '),
-    highlight: termToHighlight,
-    after: afterWords.join(' ')
+    before,
+    highlight,
+    after
   };
 };
 
@@ -206,6 +219,8 @@ onMounted(() => {
   window.addEventListener('scroll', handleScroll);
   // Set random suggestions on mount
   suggestedQueries.value = getRandomSuggestions();
+  // Check if the API is initialized
+  checkApiStatus();
 });
 
 onUnmounted(() => {
@@ -245,6 +260,14 @@ onUnmounted(() => {
       <button @click="search" class="search-button" :disabled="isLoading">
         {{ isLoading ? 'Searching...' : 'Search' }}
       </button>
+    </div>
+    
+    <!-- API initialization warning -->
+    <div v-if="!isApiInitialized" class="api-warning">
+      <div class="api-warning-icon">⚠️</div>
+      <div class="api-warning-message">
+        The search engine is still initializing. You can search, but results may be limited.
+      </div>
     </div>
     
     <!-- Ranking method selector with centered radio buttons -->
@@ -300,45 +323,21 @@ onUnmounted(() => {
         
         <a :href="result.url" target="_blank" class="result-url">{{ result.url }}</a>
         
-        <div class="result-meta">
-          Last modified: {{ result.lastModified }} | Size: {{ result.size }}
+        <!-- Snippets from the search results -->
+        <div v-if="result.snippets && result.snippets.length > 0" class="result-snippets">
+          <div v-for="(snippet, i) in result.snippets" :key="i" class="result-context">
+            <div class="context-snippet">
+              {{ snippet }}
+            </div>
+          </div>
         </div>
         
-        <!-- Single context snippet showing term occurrences -->
-        <div class="result-context">
+        <!-- If no snippets, show formatted context -->
+        <div v-else class="result-context">
           <div class="context-snippet">
             <span class="context-before">{{ result.contextSnippet.before }}</span>
             <span class="context-highlight">{{ result.contextSnippet.highlight }}</span>
             <span class="context-after">{{ result.contextSnippet.after }}</span>
-          </div>
-        </div>
-        
-        <!-- Ensure we're displaying exactly 5 top keywords -->
-        <div class="result-keywords">
-          <strong>Top Keywords:</strong>
-          <span v-for="(keyword, k) in result.keywords.slice(0, 5)" :key="k" class="keyword">
-            {{ keyword.word }} ({{ keyword.frequency }})
-          </span>
-        </div>
-        
-        <!-- Parent and child links arranged vertically and centered -->
-        <div class="result-links-container">
-          <div class="result-links" v-if="result.parentLinks && result.parentLinks.length > 0">
-            <strong class="links-header">Parent Link{{result.parentLinks.length > 1 ? 's' : ''}}:</strong>
-            <div class="links-row">
-              <div v-for="(link, l) in result.parentLinks" :key="l" class="link-item parent-link">
-                <a :href="link.url" target="_blank">{{ link.title }}</a>
-              </div>
-            </div>
-          </div>
-          
-          <div class="result-links" v-if="result.childLinks && result.childLinks.length > 0">
-            <strong class="links-header">Child Link{{result.childLinks.length > 1 ? 's' : ''}}:</strong>
-            <div class="links-row">
-              <div v-for="(link, l) in result.childLinks" :key="l" class="link-item child-link">
-                <a :href="link.url" target="_blank">{{ link.title }}</a>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -469,6 +468,27 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
+/* API initialization warning */
+.api-warning {
+  background-color: #fef7e0;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 0 auto 1.5rem;
+  max-width: 650px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.api-warning-icon {
+  font-size: 24px;
+}
+
+.api-warning-message {
+  color: #5d4037;
+  font-size: 14px;
+}
+
 /* Ranking method selector */
 .ranking-selector {
   margin: 0 auto 1.5rem;
@@ -583,12 +603,6 @@ onUnmounted(() => {
   font-size: 14px;
 }
 
-.score-details {
-  font-weight: normal;
-  color: #70757a;
-  font-size: 13px;
-}
-
 .result-title {
   font-size: 18px;
   color: #1a0dab;
@@ -615,15 +629,9 @@ onUnmounted(() => {
   text-decoration: underline;
 }
 
-.result-meta {
-  color: #70757a;
-  font-size: 14px;
-  margin-bottom: 0.75rem;
-}
-
 /* Context snippet styling - improved */
 .result-context {
-  margin: 1rem 0;
+  margin: 0.5rem 0;
   padding: 10px 15px;
   border-radius: 8px;
   background-color: #f8f9fa;
@@ -644,72 +652,9 @@ onUnmounted(() => {
   margin: 0 2px;
 }
 
-.result-keywords {
-  color: #333;
-  font-size: 14px;
-  margin: 0.75rem 0;
-}
-
-/* Parent and Child Links layout */
-.result-links-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  margin-top: 1rem;
-}
-
-.result-links {
-  min-width: 280px;
-  flex: 1;
-}
-
-.links-header {
-  text-align: center;
-}
-
-.links-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 5px;
-}
-
-.link-item {
-  margin: 0.25rem 0;
-  padding: 3px 10px;
-  background-color: #f1f3f4;
-  border-radius: 4px;
-  font-size: 13px;
-  transition: background-color 0.2s;
-}
-
-.link-item:hover {
-  background-color: #e8eaed;
-}
-
-.parent-link a, .child-link a {
-  color: #1a0dab;
-  text-decoration: none;
-}
-
-.parent-link a:hover, .child-link a:hover {
-  text-decoration: underline;
-}
-
-/* Updated icons for parent and child links */
-.parent-link::before {
-  content: "↑";
-  color: #70757a;
-  margin-right: 4px;
-  font-weight: bold;
-}
-
-.child-link::before {
-  content: "↓";
-  color: #70757a;
-  margin-right: 4px;
-  font-weight: bold;
+/* Multiple snippets container */
+.result-snippets {
+  margin: 1rem 0;
 }
 
 /* Loading indicator at the bottom when auto-loading */
