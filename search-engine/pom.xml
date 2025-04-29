@@ -42,7 +42,7 @@
     <dependency>
       <groupId>hk.ust.csit5930</groupId>
       <artifactId>crawler</artifactId>
-      <version>1.0</version>
+      <version>1.1</version>
     </dependency>
 
   </dependencies>

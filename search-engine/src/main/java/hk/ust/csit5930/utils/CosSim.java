@@ -28,7 +28,7 @@ public class CosSim {
         int L = query.size();
         if (L == 0) {
             System.out.println("Query has no valid terms after stopword removal.");
-            return null;
+            return Collections.emptyMap();  // Return empty map instead of null
         }
 
         // Create a 1 x L query vector Q and initialize with 1's.
@@ -37,6 +37,10 @@ public class CosSim {
 
         // Total number of documents in the collection (N)
         int N = documentSize;
+        if (N <= 0) {
+            System.out.println("No documents in collection.");
+            return Collections.emptyMap();
+        }
 
         // Create a similarity table: Map<docId, double[]> (term weights per document)
         Map<Integer, double[]> similarityTable = new HashMap<>();
@@ -67,16 +71,48 @@ public class CosSim {
             try {
                 // Iterate over all records in the inverted index
                 List<Posting> postings = (List<Posting>) bodyIndex.get(term);
+                
+                // Add null check for postings
+                if (postings == null || postings.isEmpty()) {
+                    continue;
+                }
+                
                 int maxtf = getMaxFrequency(postings);
+                if (maxtf == 0) {
+                    continue; // Avoid division by zero
+                }
+                
                 for (Posting posting : postings) {
+                    // Add null check for posting
+                    if (posting == null) {
+                        continue;
+                    }
+                    
                     double weight = posting.freq * idf / maxtf;
 
-                    // Store term weight in similarity table
+                    // Store term weight in similarity table - with null check
                     double[] weights = similarityTable.get(posting.doc);
-                    weights[j] = weight;
+                    if (weights == null) {
+                        // This document ID wasn't pre-initialized - create a new weights array
+                        weights = new double[L];
+                        similarityTable.put(posting.doc, weights);
+                    }
+                    
+                    // Make sure j is within bounds of the weights array
+                    if (j < weights.length) {
+                        weights[j] = weight;
+                    }
 
-                    // Store term positions in document
-                    termPositions.get(posting.doc).addAll(posting.position); // Assuming positions exist in Posting
+                    // Store term positions in document - with null check
+                    List<Integer> positions = termPositions.get(posting.doc);
+                    if (positions == null) {
+                        positions = new ArrayList<>();
+                        termPositions.put(posting.doc, positions);
+                    }
+                    
+                    if (posting.position != null) {
+                        positions.addAll(posting.position);
+                    }
                 }
             } catch (IOException e) {
                 System.err.println("Error: " + e.getMessage());
@@ -89,36 +125,51 @@ public class CosSim {
         for (Map.Entry<Integer, double[]> entry : similarityTable.entrySet()) {
             int docId = entry.getKey();
             double[] docVector = entry.getValue();
+            
+            // Add null check for docVector
+            if (docVector == null) {
+                continue;
+            }
 
             // Compute dot product: Q ⋅ docVector
             double dotProduct = 0;
             double docNorm = 0;
             double queryNorm = 0;
 
-            for (int i = 0; i < L; i++) {
+            for (int i = 0; i < L && i < docVector.length; i++) {
                 dotProduct += Q[i] * docVector[i];
                 docNorm += docVector[i] * docVector[i];
                 queryNorm += Q[i] * Q[i];
             }
 
             // Compute cosine similarity
-            double cosineSimilarity = (docNorm == 0) ? 0 : dotProduct / (Math.sqrt(docNorm) * Math.sqrt(queryNorm));
+            double cosineSimilarity = (docNorm == 0 || queryNorm == 0) ? 0 : 
+                                     dotProduct / (Math.sqrt(docNorm) * Math.sqrt(queryNorm));
 
-            // Store both cosine similarity & term positions
-            similarityScores.put(docId, new Object[]{cosineSimilarity, termPositions.get(docId)});
+            // Only include documents with non-zero similarity
+            if (cosineSimilarity > 0) {
+                // Store both cosine similarity & term positions
+                List<Integer> positions = termPositions.getOrDefault(docId, Collections.emptyList());
+                similarityScores.put(docId, new Object[]{cosineSimilarity, positions});
+            }
         }
 
         return similarityScores; // Return results with positions included
     }
 
     public static int getMaxFrequency(List<Posting> postings) {
+        if (postings == null || postings.isEmpty()) {
+            return 0;
+        }
+        
         int maxFreq = 0; // Initialize with lowest possible value
 
         for (Posting posting : postings) {
-            maxFreq = Math.max(maxFreq, posting.freq); // Update max if higher freq found
+            if (posting != null) {
+                maxFreq = Math.max(maxFreq, posting.freq); // Update max if higher freq found
+            }
         }
 
         return maxFreq;
     }
-
 }

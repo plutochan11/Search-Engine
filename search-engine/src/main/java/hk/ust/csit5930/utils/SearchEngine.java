@@ -3,7 +3,6 @@ import jdbm.htree.HTree;
 
 import java.util.*;
 
-import hk.ust.csit5930.App;
 import hk.ust.csit5930.models.TermInfo;
 
 public class SearchEngine {
@@ -22,9 +21,21 @@ public class SearchEngine {
     }
 
     public Map<String, Object> search(String userQuery) {
+        // Check for empty or blank queries
+        if (userQuery == null || userQuery.trim().isEmpty()) {
+            System.out.println("Empty query detected. Please enter a valid search term.");
+            return Collections.emptyMap();
+        }
+        
         // Process query: tokenize, remove stopwords, and stem
         Vector<String> queryVector = new Vector<>(Arrays.asList(userQuery.split(" ")));
-        List<String> filterQuery = new ArrayList<>(App.processWords(queryVector, stopStem).keySet());
+        List<String> filterQuery = new ArrayList<>(TextProcessor.processWords(queryVector, stopStem).keySet());
+        
+        // Check if any valid terms remained after processing
+        if (filterQuery.isEmpty()) {
+            System.out.println("No valid search terms found after processing. Please try a different query.");
+            return Collections.emptyMap();
+        }
 
         // Compute cosine similarity scores (Includes positions)
         Map<Integer, Object[]> cosineScores = CosSim.calculateCosSim(filterQuery, termToTermId, bodyIndex, documentSize);
@@ -62,6 +73,4 @@ public class SearchEngine {
 
         return results; // Return both rankings including term positions
     }
-
-
 }
