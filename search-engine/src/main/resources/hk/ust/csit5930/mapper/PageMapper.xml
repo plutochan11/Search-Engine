@@ -43,8 +43,8 @@
     </select>
 
     <insert id = "insert" parameterType = "Page">
-        INSERT INTO pages (url, title, content, last_modified)
-        VALUES (#{url}, #{title}, #{content}, #{lastModified})
+        INSERT INTO pages (url, title, content, last_modified, size)
+        VALUES (#{url}, #{title}, #{content}, #{lastModified}, #{size})
     </insert>
 
     <update id = "updateByUrl" parameterType = "Page">
@@ -52,7 +52,8 @@
             url = #{url},
             title = #{title},
             content = #{content},
-            last_modified = #{lastModified}
+            last_modified = #{lastModified},
+            size = #{size}
         <!-- Only update when the new last modified date is greater than the old one-->
         WHERE url = #{url} AND last_modified &lt; #{lastModified}
     </update>
@@ -63,7 +64,8 @@
             url = #{url},
             title = #{title},
             content = #{content},
-            last_modified = #{lastModified}
+            last_modified = #{lastModified},
+            size = #{size}
         WHERE id = #{id} AND last_modified &lt; #{lastModified}
     </update>
 
@@ -101,5 +103,9 @@
     
     <select id = "getTitle" parameterType = "int" resultType = "String">
         SELECT title FROM pages WHERE id = #{id}
+    </select>
+
+    <select id = "getPage" parameterType = "int" resultType = "Page">
+        SELECT * FROM pages WHERE id = #{id}
     </select>
 </mapper>

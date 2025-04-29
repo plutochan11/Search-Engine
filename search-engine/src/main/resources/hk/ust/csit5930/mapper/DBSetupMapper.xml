@@ -12,7 +12,8 @@
             url VARCHAR(255) UNIQUE NOT NULL,
             title VARCHAR(255),
             content CLOB,
-            last_modified TIMESTAMP
+            last_modified TIMESTAMP,
+            size INT
         );
         CREATE INDEX idx_url ON pages (url);
     </insert>

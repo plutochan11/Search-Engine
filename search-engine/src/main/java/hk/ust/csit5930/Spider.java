@@ -33,7 +33,7 @@ import hk.ust.csit5930.model.Relationship;
 public class Spider {
     // Default entry point, can delegate users to pass their own
     private String URL;
-    private final int NUM_PAGES = 297; // Number of pages to crawl
+    private int NUM_PAGES = 297; // Number of pages to crawl
     private static H2DBOperator dbOperator;
     private int[][] linkMatrix; // Adjacency matrix for the graph representation of the web pages
 
@@ -53,7 +53,7 @@ public class Spider {
 
     /**
      * Constructor for user-specified entry point
-     * @param entryUrl
+     * @param entryUrl The entry URL you want to start crawling with
      * @param setup A boolean flag to indicate whether to set up the database.
      */
     public Spider (String entryUrl, Boolean setup) {
@@ -98,18 +98,29 @@ public class Spider {
                 // Extract the last modified date from headers and parse it to a Timestamp
                 Map<String, String> headers = urlResponse.headers();
                 Timestamp lastModified = parseLastModified(headers.get("Last-Modified")); 
+                String contentLength = headers.get("Content-Length");
+                int size = 0;
+
+                // Check if the content length header is null or 0. If so, think of the total number of words as the size
+                if (!contentLength.equals("0") && contentLength != null) {
+                    size = Integer.parseInt(contentLength);
+                }
 
                 // Parse the DOM to fetch title and content
                 Document urlDoc = urlResponse.parse();
                 String urlTitle = urlDoc.title(); 
                 String urlContent = urlDoc.body().text();
 
+                if (size == 0) {
+                    size = urlContent.length();
+                }
+                
                 // Insert the page into pages table
                 try {
-                    dbOperator.insert(url, urlTitle, urlContent, lastModified);
+                    dbOperator.insert(url, urlTitle, urlContent, lastModified, size);
                 } catch (PersistenceException e) { // Catch the exception manually to handle update scenarios
                     // Check the update results. If it's 0, it means there's no update and thereby next page
-                    if ((dbOperator.updateById(url, urlTitle, urlContent, lastModified)) == 0) {
+                    if ((dbOperator.updateById(url, urlTitle, urlContent, lastModified, size)) == 0) {
                         continue;
                     }
                 }
@@ -184,11 +195,6 @@ public class Spider {
                         System.out.printf("Page ID: %s, Title: %s, URL: %s\n", 
                                     page.getId(), page.getTitle(), page.getUrl());
             });
-        // List<Relationship> relationships = dbOperator.getAllRelationships();
-        // relationships.forEach(relationship -> {
-        //     System.out.printf("Relationship ID: %s, Parent URL: %s, Child URL: %s\n",
-        //                 relationship.getId(), relationship.getParentUrl(), relationship.getChildUrl());
-        // });
     }
 
     /**
@@ -260,5 +266,18 @@ public class Spider {
      */
     public String getTitle(int id) {
         return dbOperator.getTitle(id);
+    }
+
+    /**
+     * Specify the number of webpages to crawl.
+     * @param numPages The number of pages for crawling.
+     */
+    public void setNumPages(int numPages) {
+        this.NUM_PAGES = numPages;
+    }
+
+    // test use
+    public Page getPage(int id) {
+        return dbOperator.getPage(id);
     }
 }

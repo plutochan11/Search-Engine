@@ -22,4 +22,5 @@ public interface PageMapper {
     String getContent(int id);
     String getUrl(int id);
     String getTitle(int id);
+    Page getPage(int id);
 }

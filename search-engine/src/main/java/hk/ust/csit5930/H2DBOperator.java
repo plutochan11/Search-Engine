@@ -46,11 +46,12 @@ public class H2DBOperator {
      * @param title        The title of the page.
      * @param content      The content of the page.
      * @param lastModified The last modified timestamp of the page.
+     * @param size         The size of the page content.
      */
-    public void insert (String url, String title, String content, Timestamp lastModified) {
+    public void insert (String url, String title, String content, Timestamp lastModified, int size) {
         try (SqlSession session = sqlSessionFactory.openSession()) {
             PageMapper mapper = session.getMapper(PageMapper.class);
-            Page page = new Page(url, title, content, lastModified);
+            Page page = new Page(url, title, content, lastModified, size);
             mapper.insert(page);
             session.commit();
         } catch (NullPointerException e) {
@@ -65,10 +66,10 @@ public class H2DBOperator {
         }
     }
 
-    public int updateById (String url, String title, String content, Timestamp lastModified) {
+    public int updateById (String url, String title, String content, Timestamp lastModified, int size) {
         try (SqlSession session = sqlSessionFactory.openSession()) {
             PageMapper mapper = session.getMapper(PageMapper.class);
-            Page page = new Page(url, title, content, lastModified);
+            Page page = new Page(url, title, content, lastModified, size);
             return mapper.updateById(page);
         } catch (Exception e) {
             // System.err.println("Failed to update page: " + e.getMessage());
@@ -181,6 +182,16 @@ public class H2DBOperator {
             return mapper.getTitle(id);
         } catch (Exception e) {
             System.err.println("Failed to get title by ID: " + e.getMessage());
+            return null;
+        }
+    }
+    
+    public Page getPage(int id) {
+        try (SqlSession session = sqlSessionFactory.openSession()) {
+            PageMapper mapper = session.getMapper(PageMapper.class);
+            return mapper.getPage(id);
+        } catch (Exception e) {
+            System.err.println("Failed to get page by ID: " + e.getMessage());
             return null;
         }
     }
