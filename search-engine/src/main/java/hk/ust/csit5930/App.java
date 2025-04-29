@@ -79,7 +79,7 @@ public class App {
             }
 
             long indexEndTime = System.currentTimeMillis();
-            System.out.println("Indexing Duration: " + (indexEndTime - crawlerEndTime)/1000.0);
+            // System.out.println("Indexing Duration: " + (indexEndTime - crawlerEndTime)/1000.0);
 
             //testing
             // Run PageRank using the matrix
