@@ -9,11 +9,8 @@ package hk.ust.csit5930;
  */
 public class CrawlerApplication {
     public static void main(String[] args) {
-        Spider spider = new Spider(true);
-        spider.setNumPages(30);
+        Spider spider = new Spider();
+        spider.fromScratch(true);
         spider.crawl();
-        for (int i = 1; i <= 10; i++) {
-            System.out.println(spider.getPage(i));
-        }
     }
 }

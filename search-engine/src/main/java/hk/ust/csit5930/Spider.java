@@ -14,6 +14,13 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.Vector;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.locks.ReentrantLock;
 import org.jsoup.Jsoup;
 import org.apache.ibatis.exceptions.PersistenceException;
 import org.jsoup.Connection.Response;
@@ -26,145 +33,284 @@ import hk.ust.csit5930.model.Relationship;
  * Spider class to crawl web pages and store them in a database.
  * <p> This class uses Jsoup to fetch and parse web pages, and H2DBOperator
  * to interact with the H2 database. It implements a breadth-first search (BFS)
- * algorithm to crawl the web pages.
+ * algorithm to crawl the web pages with multi-threading support for improved performance.
+ * <p> The class also includes a retry mechanism for failed URLs, and a method
+ * to handle the crawling process efficiently.
  * 
  * @author pluto
  */
 public class Spider {
     // Default entry point, can delegate users to pass their own
     private String URL;
-    private int NUM_PAGES = 297; // Number of pages to crawl
+    private int NUM_PAGES = 300; // Number of pages to crawl
     private static H2DBOperator dbOperator;
     private int[][] linkMatrix; // Adjacency matrix for the graph representation of the web pages
+    private int MAX_RETRIES = 2; // Maximum number of retries for failed URLs
+    private int CONNECTION_TIMEOUT = 10000; // Connection timeout in milliseconds
 
     /**
      * Default constructor with a preset entry point.
      * The default entry point is "https://www.cse.ust.hk/~kwtleung/COMP4321/testpage.htm".
      * <p> This constructor initializes the database operator and sets up the database.
-     * @param setup A boolean flag to indicate whether to set up the database.
      */
-    public Spider (Boolean setup) {
+    public Spider () {
         URL = "https://www.cse.ust.hk/~kwtleung/COMP4321/testpage.htm";
         dbOperator = new H2DBOperator();
-        if (setup) {
-            dbOperator.setup(); // Setup the database
-        }
     }
 
     /**
      * Constructor for user-specified entry point
      * @param entryUrl The entry URL you want to start crawling with
-     * @param setup A boolean flag to indicate whether to set up the database.
      */
-    public Spider (String entryUrl, Boolean setup) {
+    public Spider (String entryUrl) {
         URL = entryUrl;
         dbOperator = new H2DBOperator();
-        if (setup) {
-            dbOperator.setup(); // Setup the database
-        }
     }
 
     /**
-     * Crawl web pages as per the number of pages specified.
-     * <p> Cycles are handled by a hashset to check for duplicates.
+     * Calculate optimal thread count based on system capabilities
+     * @return The optimal number of threads to use
+     */
+    private int calculateOptimalThreadCount() {
+        // Get available processors (cores)
+        int availableProcessors = Runtime.getRuntime().availableProcessors();
+        
+        // For M2 MacBook:
+        // M2 chip has up to 8 cores (4 performance + 4 efficiency)
+        // Use slightly more threads than cores to account for I/O waits
+        // but not too many to avoid thread switching overhead
+        int optimal = Math.min(availableProcessors * 2, 24);
+        
+        // Ensure at least 4 threads and not more than 32
+        return Math.max(4, Math.min(optimal, 32));
+    }
+
+    /**
+     * Crawl web pages as per the number of pages specified with multi-threading support.
+     * <p> Uses a thread pool to parallelize crawling for significantly improved performance.
+     * Includes retry mechanism for failed URLs.
      */
     public void crawl() {
         long startTime = System.currentTimeMillis();
-        // Count to keep track of the number of pages crawled successfully
-        int pageCount = 0;
+        
+        // Use AtomicInteger for thread-safe counter
+        AtomicInteger pageCount = new AtomicInteger(0);
 
-        // Implement BSF with a queue (FIFO)
-        Queue<String> urlQueue = new LinkedList<>();
-        urlQueue.add(URL); // Start with the initial URL
+        // Use concurrent collections for thread safety
+        ConcurrentLinkedQueue<String> urlQueue = new ConcurrentLinkedQueue<>();
+        Set<String> visitedUrls = ConcurrentHashMap.newKeySet();
+        Set<String> inProgressUrls = ConcurrentHashMap.newKeySet();
+        
+        // Map to track retry counts for failed URLs
+        Map<String, Integer> retryCountMap = new ConcurrentHashMap<>();
 
-        // Check duplicates with a hashset (O(1) lookup)
-        Set<String> visitedUrls = new HashSet<>();
-
-        while (pageCount < NUM_PAGES) {
-            String url;
-            try {
-                // Dequeue the url and fetch the page
-                // Check for availability
-                if ((url = urlQueue.poll()) == null) {
-                    System.out.println("No more URLs to crawl.");
-                    break;
-                }
-
-                Response urlResponse = Jsoup.connect(url)
-                        // .timeout(10000)
-                        .userAgent("Mozilla/5.0")
-                        .execute();
-
-                // Extract the last modified date from headers and parse it to a Timestamp
-                Map<String, String> headers = urlResponse.headers();
-                Timestamp lastModified = parseLastModified(headers.get("Last-Modified")); 
-                String contentLength = headers.get("Content-Length");
-                int size = 0;
-
-                // Check if the content length header is null or 0. If so, think of the total number of words as the size
-                if (!contentLength.equals("0") && contentLength != null) {
-                    size = Integer.parseInt(contentLength);
-                }
-
-                // Parse the DOM to fetch title and content
-                Document urlDoc = urlResponse.parse();
-                String urlTitle = urlDoc.title(); 
-                String urlContent = urlDoc.body().text();
-
-                if (size == 0) {
-                    size = urlContent.length();
-                }
-                
-                // Insert the page into pages table
+        // Add the starting URL
+        urlQueue.add(URL);
+        
+        // Create a thread pool with optimized size for M2 MacBook
+        int numThreads = calculateOptimalThreadCount();
+        System.out.println("Starting crawl with " + numThreads + " threads (optimized for your system)");
+        ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+        
+        // Lock for synchronizing pageCount access
+        ReentrantLock countLock = new ReentrantLock();
+        
+        // Submit tasks for crawling until we reach NUM_PAGES
+        while (pageCount.get() < NUM_PAGES && (!urlQueue.isEmpty() || !inProgressUrls.isEmpty())) {
+            
+            // If queue is empty but we have URLs in progress, wait a bit
+            if (urlQueue.isEmpty() && !inProgressUrls.isEmpty()) {
                 try {
-                    dbOperator.insert(url, urlTitle, urlContent, lastModified, size);
-                } catch (PersistenceException e) { // Catch the exception manually to handle update scenarios
-                    // Check the update results. If it's 0, it means there's no update and thereby next page
-                    if ((dbOperator.updateById(url, urlTitle, urlContent, lastModified, size)) == 0) {
-                        continue;
-                    }
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                 }
-
-                visitedUrls.add(url);
-                pageCount++;
-                // Print the intermediate results
-                if (pageCount % 10 == 0 || pageCount == 1) {
-                    System.out.println("Crawled " + pageCount + " pages");
-                }
-
-                /*
-                    Find links in the page and queue them
-                */ 
-                urlDoc.select("a[href]").forEach(anchor -> {
-                    // Retain the absolute urls
-                    String link = anchor.attr("abs:href");
-                    if (!urlQueue.contains(link) && !visitedUrls.contains(link)) {
-                        
-                        // Record parent-child relationship
-                        // dbOperator.insertPlaceHolder (link);
-                        dbOperator.insertRelationship (url, link);
-                        urlQueue.add(link);
-                    }
-                });
-
-            } catch (IOException e) {
-                System.err.println("Failed to crawl URL");
-                e.printStackTrace();
+                continue;
             }
+            
+            // Get the next URL from the queue
+            String url = urlQueue.poll();
+            if (url == null) continue;
+            
+            // Mark this URL as in progress
+            inProgressUrls.add(url);
+            
+            // Submit task to thread pool
+            executorService.submit(() -> {
+                try {
+                    // Check if we've already reached our target page count
+                    if (pageCount.get() >= NUM_PAGES) {
+                        inProgressUrls.remove(url);
+                        return;
+                    }
+                    
+                    // Only process if we haven't visited this URL yet
+                    if (!visitedUrls.contains(url)) {
+                        try {
+                            // Connect with a timeout and user agent
+                            Response urlResponse = Jsoup.connect(url)
+                                    .userAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko)")
+                                    .followRedirects(true)
+                                    .timeout(CONNECTION_TIMEOUT)
+                                    .execute();
 
-            // Show some respect to the server
-            // try {
-            //     Thread.sleep(100); // Sleep for 0.1 seconds to avoid overwhelming the server
-            // } catch (InterruptedException e) {
-            //     System.err.println("Thread interrupted");
-            //     e.printStackTrace();
-            // }
+                            // Extract and process headers
+                            Map<String, String> headers = urlResponse.headers();
+                            Timestamp lastModified = parseLastModified(headers.get("Last-Modified")); 
+                            
+                            // Handle content length
+                            String contentLength = headers.get("Content-Length");
+                            int size = 0;
+                            if (contentLength != null && !contentLength.equals("0")) {
+                                try {
+                                    size = Integer.parseInt(contentLength);
+                                } catch (NumberFormatException e) {
+                                    System.err.println("Invalid Content-Length format: " + contentLength);
+                                }
+                            }
+
+                            // Parse the content
+                            Document urlDoc = urlResponse.parse();
+                            String urlTitle = urlDoc.title(); 
+                            String urlContent = urlDoc.body().text();
+
+                            // If content length wasn't available, use the content's length
+                            if (size == 0) {
+                                size = urlContent.length();
+                            }
+                            
+                            // Check if we need to add this page
+                            boolean pageAdded = false;
+                            
+                            // Critical section for DB access and counter update
+                            countLock.lock();
+                            try {
+                                // Make sure we haven't exceeded our page count while we were working
+                                if (pageCount.get() < NUM_PAGES && !visitedUrls.contains(url)) {
+                                    try {
+                                        // Try to insert the page
+                                        dbOperator.insert(url, urlTitle, urlContent, lastModified, size);
+                                        visitedUrls.add(url);
+                                        pageCount.incrementAndGet();
+                                        pageAdded = true;
+                                        
+                                        // Log progress
+                                        int currentCount = pageCount.get();
+                                        if (currentCount % 30 == 0 || currentCount == 1) {
+                                            System.out.println("Crawled " + currentCount + " pages");
+                                        }
+                                    } catch (PersistenceException e) {
+                                        // Handle update for existing URLs
+                                        if (dbOperator.updateById(url, urlTitle, urlContent, lastModified, size) > 0) {
+                                            visitedUrls.add(url);
+                                            pageCount.incrementAndGet();
+                                            pageAdded = true;
+                                        }
+                                    }
+                                }
+                            } finally {
+                                countLock.unlock();
+                            }
+                            
+                            // If we successfully added this page, process its links
+                            if (pageAdded && pageCount.get() < NUM_PAGES) {
+                                // Extract links
+                                urlDoc.select("a[href]").forEach(anchor -> {
+                                    String link = anchor.attr("abs:href");
+                                    
+                                    // Filter valid links and avoid already processed ones
+                                    if (isValidUrl(link) && !visitedUrls.contains(link) && !inProgressUrls.contains(link)) {
+                                        // Record parent-child relationship
+                                        dbOperator.insertRelationship(url, link);
+                                        
+                                        // Add to queue if we still need more pages
+                                        if (pageCount.get() < NUM_PAGES) {
+                                            urlQueue.add(link);
+                                            inProgressUrls.add(link);
+                                        }
+                                    }
+                                });
+                            }
+                        } catch (IOException e) {
+                            // Handle failed URLs with the retry mechanism
+                            int retryCount = retryCountMap.getOrDefault(url, 0) + 1;
+                            
+                            if (retryCount <= MAX_RETRIES) {
+                                // Update retry count and add back to queue with lower priority (at the end)
+                                retryCountMap.put(url, retryCount);
+                                System.out.println("Retrying URL (attempt " + retryCount + "/" + MAX_RETRIES + "): " + url);
+                                urlQueue.add(url);
+                            } else {
+                                // Log permanently failed URLs after max retries
+                                System.err.println("Failed to crawl URL after " + MAX_RETRIES + " attempts: " + url + " - " + e.getMessage());
+                            }
+                        }
+                    }
+                } finally {
+                    // Always remove from in-progress set when done
+                    inProgressUrls.remove(url);
+                }
+            });
         }
-        // Initialise the link matrix with the number of pages crawled
-        linkMatrix = new int[pageCount][pageCount];
+
+        // Shutdown the executor and wait for all tasks to complete
+        executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(30, TimeUnit.MINUTES)) {
+                executorService.shutdownNow();
+                System.out.println("Executor timed out, forcing shutdown");
+            }
+        } catch (InterruptedException e) {
+            executorService.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+
+        // Initialize the link matrix with the number of pages crawled
+        int finalPageCount = pageCount.get();
+        linkMatrix = new int[finalPageCount][finalPageCount];
+        
+        // Print retry statistics
+        int totalFailedUrls = (int) retryCountMap.entrySet().stream()
+                .filter(entry -> entry.getValue() > MAX_RETRIES)
+                .count();
+                
+        System.out.println("Total URLs that failed after max retries: " + totalFailedUrls);
 
         long endTime = System.currentTimeMillis();
-        System.out.printf("Successfully crawled %d pages in %s s\n", pageCount, (endTime - startTime) / 1000);
+        System.out.printf("Successfully crawled %d pages in %s s\n", finalPageCount, (endTime - startTime) / 1000);
+    }
+    
+    /**
+     * Check if a URL is valid and should be crawled.
+     * @param url The URL to check
+     * @return true if the URL is valid, false otherwise
+     */
+    private boolean isValidUrl(String url) {
+        if (url == null || url.isEmpty()) {
+            return false;
+        }
+        
+        // Skip non-HTTP/HTTPS URLs
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            return false;
+        }
+        
+        // Skip URLs with fragments or certain file types
+        if (url.contains("#") || 
+            url.endsWith(".pdf") || 
+            url.endsWith(".zip") || 
+            url.endsWith(".jpg") || 
+            url.endsWith(".jpeg") ||
+            url.endsWith(".png") || 
+            url.endsWith(".gif") ||
+            url.endsWith(".mp4") ||
+            url.endsWith(".mp3") ||
+            url.endsWith(".avi") ||
+            url.endsWith(".mov")) {
+            return false;
+        }
+        
+        return true;
     }
 
     /**
@@ -276,8 +422,35 @@ public class Spider {
         this.NUM_PAGES = numPages;
     }
 
+    /**
+     * Set the maximum number of retries for failed URLs
+     * @param maxRetries The maximum number of retries
+     */
+    public void setMaxRetries(int maxRetries) {
+        this.MAX_RETRIES = maxRetries;
+    }
+    
+    /**
+     * Set the connection timeout in milliseconds
+     * @param timeout The timeout in milliseconds
+     */
+    public void setConnectionTimeout(int timeout) {
+        this.CONNECTION_TIMEOUT = timeout;
+    }
+
     // test use
     public Page getPage(int id) {
         return dbOperator.getPage(id);
+    }
+
+    /**
+     * Set up the database from scratch.
+     * <p> This method initializes the database and creates the necessary tables.
+     * @param flag A boolean flag to indicate whether to set up the database from scratch.
+     */
+    public void fromScratch(Boolean flag) {
+        if (flag) {
+            dbOperator.setup();
+        }
     }
 }
