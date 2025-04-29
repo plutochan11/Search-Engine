@@ -11,6 +11,7 @@ const resultsPerPage = 10;
 const currentPage = ref(1);
 const isLoadingMore = ref(false);
 const showSuggestions = ref(false);
+const rankingMethod = ref('cosine'); // Default to cosine similarity
 
 // All possible suggested queries
 const allSuggestedQueries = [
@@ -66,19 +67,42 @@ const search = async () => {
     // Generate 50 mock documents
     allResults.value = Array.from({ length: 50 }, (_, i) => {
       const scoreValue = Math.round((0.99 - (i * 0.02)) * 100) / 100;
+      const baseRankScore = Math.max(scoreValue, 0.01);
+      
+      // Generate sample keywords for query matching
+      const sampleKeywords = [
+        'machine', 'learning', 'artificial', 'intelligence', 'neural', 
+        'networks', 'data', 'science', 'algorithms', 'computing'
+      ];
+      
+      // Extract keywords from query
+      const queryWords = query.value.toLowerCase().split(' ');
+      
+      // Randomly select some keywords that match the query
+      const matchedKeywords = sampleKeywords.filter(word => 
+        queryWords.some(queryWord => word.includes(queryWord))
+      );
+      
+      // Ensure we have at least 2 keywords
+      const docKeywords = matchedKeywords.length >= 2 ? 
+        matchedKeywords : sampleKeywords.slice(0, 5);
+      
+      // Generate single context snippet showing query term appearance
+      const contextSnippet = generateContextSnippet(queryWords);
+      
       return {
-        score: Math.max(scoreValue, 0.01),
+        score: baseRankScore,
+        pageRank: Math.round((0.8 - (i * 0.015)) * 100) / 100,
+        combinedScore: Math.round((baseRankScore * (0.8 - (i * 0.015))) * 100) / 100,
         title: `Sample Document Title ${i + 1}`,
         url: `https://example.com/doc${i + 1}`,
         lastModified: `2025-${Math.floor(Math.random() * 4) + 1}-${Math.floor(Math.random() * 28) + 1}`,
         size: `${Math.floor(Math.random() * 100) + 1}.${Math.floor(Math.random() * 9) + 1} KB`,
-        keywords: [
-          { word: `keyword${i + 1}a`, frequency: Math.floor(Math.random() * 20) + 5 },
-          { word: `keyword${i + 1}b`, frequency: Math.floor(Math.random() * 15) + 5 },
-          { word: `keyword${i + 1}c`, frequency: Math.floor(Math.random() * 10) + 3 },
-          { word: `keyword${i + 1}d`, frequency: Math.floor(Math.random() * 8) + 2 },
-          { word: `keyword${i + 1}e`, frequency: Math.floor(Math.random() * 5) + 1 }
-        ],
+        keywords: docKeywords.map((word, j) => ({
+          word, 
+          frequency: Math.floor(Math.random() * 20) + 5
+        })),
+        contextSnippet: contextSnippet,
         parentLinks: Array.from({ length: Math.floor(Math.random() * 3) + 1 }, (_, j) => ({
           title: `Parent Page ${j + 1} for Doc ${i + 1}`,
           url: `https://example.com/parent${j + 1}/doc${i + 1}`
@@ -104,6 +128,32 @@ const search = async () => {
   } finally {
     isLoading.value = false;
   }
+};
+
+// Generate a single context snippet showing query terms
+const generateContextSnippet = (queryTerms) => {
+  const commonWords = ['the', 'and', 'of', 'to', 'a', 'in', 'for', 'is', 'on', 'that', 'by', 'this', 'with', 'you', 'it'];
+  const beforeWords = [];
+  const afterWords = [];
+  
+  // Generate 5-8 words before
+  for (let j = 0; j < Math.floor(Math.random() * 4) + 5; j++) {
+    beforeWords.push(commonWords[Math.floor(Math.random() * commonWords.length)]);
+  }
+  
+  // Get a random query term to highlight
+  const termToHighlight = queryTerms[Math.floor(Math.random() * queryTerms.length)];
+  
+  // Generate 5-8 words after
+  for (let j = 0; j < Math.floor(Math.random() * 4) + 5; j++) {
+    afterWords.push(commonWords[Math.floor(Math.random() * commonWords.length)]);
+  }
+  
+  return {
+    before: beforeWords.join(' '),
+    highlight: termToHighlight,
+    after: afterWords.join(' ')
+  };
 };
 
 // Function to load more results
@@ -171,7 +221,8 @@ onUnmounted(() => {
       <div class="search-input-container">
         <div class="search-icon">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
         </div>
         <input 
@@ -185,7 +236,8 @@ onUnmounted(() => {
         <div class="search-action-buttons" v-if="query">
           <button class="clear-button" @click="clearSearch" title="Clear search">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
           </button>
         </div>
@@ -193,6 +245,21 @@ onUnmounted(() => {
       <button @click="search" class="search-button" :disabled="isLoading">
         {{ isLoading ? 'Searching...' : 'Search' }}
       </button>
+    </div>
+    
+    <!-- Ranking method selector with centered radio buttons -->
+    <div v-if="hasSearched && visibleResults.length > 0" class="ranking-selector">
+      <span class="ranking-label">Ranking method:</span>
+      <div class="ranking-options">
+        <label>
+          <input type="radio" v-model="rankingMethod" value="cosine" />
+          <span>Cosine Similarity only</span>
+        </label>
+        <label>
+          <input type="radio" v-model="rankingMethod" value="combined" />
+          <span>Combined (PageRank × CosSim)</span>
+        </label>
+      </div>
     </div>
     
     <!-- Suggested queries section -->
@@ -223,31 +290,55 @@ onUnmounted(() => {
       
       <div v-for="(result, index) in visibleResults" :key="index" class="result-item">
         <div class="result-header">
-          <span class="result-score">{{ result.score.toFixed(2) }}</span>
+          <span class="result-score">
+            {{ rankingMethod === 'combined' ? 
+                `Score: ${result.combinedScore.toFixed(4)} (PageRank: ${result.pageRank.toFixed(2)} × CosSim: ${result.score.toFixed(2)})` : 
+                `Similarity: ${result.score.toFixed(4)}` }}
+          </span>
           <a :href="result.url" target="_blank" class="result-title">{{ result.title }}</a>
         </div>
         
         <a :href="result.url" target="_blank" class="result-url">{{ result.url }}</a>
         
         <div class="result-meta">
-          Last modified: {{ result.lastModified }}, Size: {{ result.size }}
+          Last modified: {{ result.lastModified }} | Size: {{ result.size }}
         </div>
         
-        <div class="result-keywords">
-          <span v-for="(keyword, kidx) in result.keywords" :key="kidx">
-            {{ keyword.word }} {{ keyword.frequency }}{{ kidx < result.keywords.length - 1 ? '; ' : '' }}
-          </span>
-        </div>
-        
-        <div class="result-links" v-if="result.parentLinks && result.parentLinks.length > 0">
-          <div v-for="(link, pidx) in result.parentLinks" :key="`p-${pidx}`" class="parent-link">
-            <a :href="link.url" target="_blank">{{ link.title }}</a>
+        <!-- Single context snippet showing term occurrences -->
+        <div class="result-context">
+          <div class="context-snippet">
+            <span class="context-before">{{ result.contextSnippet.before }}</span>
+            <span class="context-highlight">{{ result.contextSnippet.highlight }}</span>
+            <span class="context-after">{{ result.contextSnippet.after }}</span>
           </div>
         </div>
         
-        <div class="result-links" v-if="result.childLinks && result.childLinks.length > 0">
-          <div v-for="(link, cidx) in result.childLinks" :key="`c-${cidx}`" class="child-link">
-            <a :href="link.url" target="_blank">{{ link.title }}</a>
+        <!-- Ensure we're displaying exactly 5 top keywords -->
+        <div class="result-keywords">
+          <strong>Top Keywords:</strong>
+          <span v-for="(keyword, k) in result.keywords.slice(0, 5)" :key="k" class="keyword">
+            {{ keyword.word }} ({{ keyword.frequency }})
+          </span>
+        </div>
+        
+        <!-- Parent and child links arranged vertically and centered -->
+        <div class="result-links-container">
+          <div class="result-links" v-if="result.parentLinks && result.parentLinks.length > 0">
+            <strong class="links-header">Parent Link{{result.parentLinks.length > 1 ? 's' : ''}}:</strong>
+            <div class="links-row">
+              <div v-for="(link, l) in result.parentLinks" :key="l" class="link-item parent-link">
+                <a :href="link.url" target="_blank">{{ link.title }}</a>
+              </div>
+            </div>
+          </div>
+          
+          <div class="result-links" v-if="result.childLinks && result.childLinks.length > 0">
+            <strong class="links-header">Child Link{{result.childLinks.length > 1 ? 's' : ''}}:</strong>
+            <div class="links-row">
+              <div v-for="(link, l) in result.childLinks" :key="l" class="link-item child-link">
+                <a :href="link.url" target="_blank">{{ link.title }}</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -287,7 +378,7 @@ onUnmounted(() => {
 /* Google-style search form */
 .search-form {
   display: flex;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   width: 100%;
   max-width: 650px;
   margin-left: auto;
@@ -378,6 +469,42 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
+/* Ranking method selector */
+.ranking-selector {
+  margin: 0 auto 1.5rem;
+  padding: 10px 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  max-width: 650px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.ranking-label {
+  font-weight: 500;
+  color: #5f6368;
+}
+
+.ranking-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.ranking-options label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 14px;
+  color: #3c4043;
+}
+
+.ranking-options input {
+  margin-right: 5px;
+}
+
 .suggested-queries {
   margin-bottom: 2rem;
   padding: 15px;
@@ -444,13 +571,22 @@ onUnmounted(() => {
 .result-header {
   display: flex;
   align-items: baseline;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .result-score {
   font-weight: bold;
   color: #1a73e8;
   margin-right: 8px;
+  font-size: 14px;
+}
+
+.score-details {
+  font-weight: normal;
+  color: #70757a;
+  font-size: 13px;
 }
 
 .result-title {
@@ -458,6 +594,8 @@ onUnmounted(() => {
   color: #1a0dab;
   text-decoration: none;
   font-weight: 500;
+  margin-bottom: 8px;
+  display: inline-block;
 }
 
 .result-title:hover {
@@ -468,7 +606,8 @@ onUnmounted(() => {
   display: block;
   color: #006621;
   font-size: 14px;
-  margin-bottom: 0.5rem;
+  margin-top: 6px;
+  margin-bottom: 12px;
   text-decoration: none;
 }
 
@@ -479,22 +618,74 @@ onUnmounted(() => {
 .result-meta {
   color: #70757a;
   font-size: 14px;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Context snippet styling - improved */
+.result-context {
+  margin: 1rem 0;
+  padding: 10px 15px;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.context-snippet {
+  color: #3c4043;
+}
+
+.context-highlight {
+  background-color: #fbbc05;
+  font-weight: 600;
+  color: #202124;
+  padding: 2px 4px;
+  border-radius: 3px;
+  margin: 0 2px;
 }
 
 .result-keywords {
   color: #333;
   font-size: 14px;
-  margin-bottom: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+/* Parent and Child Links layout */
+.result-links-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  margin-top: 1rem;
 }
 
 .result-links {
-  margin-top: 0.5rem;
-  font-size: 14px;
+  min-width: 280px;
+  flex: 1;
 }
 
-.parent-link, .child-link {
+.links-header {
+  text-align: center;
+}
+
+.links-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.link-item {
   margin: 0.25rem 0;
+  padding: 3px 10px;
+  background-color: #f1f3f4;
+  border-radius: 4px;
+  font-size: 13px;
+  transition: background-color 0.2s;
+}
+
+.link-item:hover {
+  background-color: #e8eaed;
 }
 
 .parent-link a, .child-link a {
@@ -506,23 +697,22 @@ onUnmounted(() => {
   text-decoration: underline;
 }
 
-/* Icons for parent and child links */
+/* Updated icons for parent and child links */
 .parent-link::before {
-  content: "➤ ";
+  content: "↑";
   color: #70757a;
-  transform: rotate(270deg);
-  display: inline-block;
   margin-right: 4px;
+  font-weight: bold;
 }
 
 .child-link::before {
-  content: "➤ ";
+  content: "↓";
   color: #70757a;
-  transform: rotate(90deg);
-  display: inline-block;
   margin-right: 4px;
+  font-weight: bold;
 }
 
+/* Loading indicator at the bottom when auto-loading */
 .loading-more {
   text-align: center;
   padding: 15px;
