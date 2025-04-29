@@ -1,41 +1,54 @@
+package hk.ust.csit5930;
 
 import jdbm.RecordManagerFactory;
 import jdbm.htree.HTree;
 import org.htmlparser.util.ParserException;
 
+import hk.ust.csit5930.models.TermInfo;
+import hk.ust.csit5930.models.WordInfo;
+import hk.ust.csit5930.utils.Crawler;
+import hk.ust.csit5930.utils.InvertedIndex;
+import hk.ust.csit5930.utils.PageRank;
+import hk.ust.csit5930.utils.SearchEngine;
+import hk.ust.csit5930.utils.StopStem;
+
 import java.io.IOException;
 import java.util.*;
 
 
-public class Main {
+public class App {
     public static void main(String[] args) {
-        long start_time = System.currentTimeMillis();
+        // long start_time = System.currentTimeMillis();
         String rootUrl = "https://www.cse.ust.hk/~kwtleung/COMP4321/testpage.htm"; // URL to crawl and index
         try {
             // Initialize the crawler
-            Crawler crawler = new Crawler(rootUrl);
-            StopStem stopStem = new StopStem("stopwords.txt");
+            // Crawler crawler = new Crawler(rootUrl);
+            Spider crawler = new Spider(true);
+            StopStem stopStem = new StopStem("search-engine/src/main/resources/stopwords.txt");
             //InvertedIndex titleInvertedIndex = new InvertedIndex("recordmanager1", "titleIndex");
             InvertedIndex bodyInvertedIndex = new InvertedIndex("recordmanager2", "bodyIndex");
 
 
             // Step 1: Crawl all links and assign document IDs
-            Map<Integer, List<Integer>> indexedDocs = crawler.crawlAllLinks();
-            long crawlerEndTime = System.currentTimeMillis();
-            System.out.println("Crawler Duration: " + (crawlerEndTime - start_time)/1000.0);
+            System.out.println("Crawling all links...");
+            crawler.crawl();
+            Map<Integer, List<Integer>> indexedDocs = crawler.getRelationships();
+            // long crawlerEndTime = System.currentTimeMillis();
+            // System.out.println("Crawler Duration: " + (crawlerEndTime - start_time)/1000.0);
 
             // Retrieve the link matrix
             int[][] linkMatrix = crawler.getLinkMatrix();
 
             // Step 2: Process each page title & body separately
             // Initial index mapping
+            System.out.println("Indexing documents...");
             Map<String, TermInfo> termToTermId = new HashMap<>(); //Term Index: term ->termID, document frequency
             Map<Integer, String> termIdToTerm = new HashMap<>(); //termID ->term
             Map<Integer, List<Integer>> docTermIndex = new HashMap<>(); //Forward Index: docID ->termID
             int nextTermId = 1;
 
             for (Integer docId : indexedDocs.keySet()) {
-                Vector<String> bodyWords = crawler.getWordFromDocId(docId);
+                Vector<String> bodyWords = crawler.getContent(docId);
                 Map<String,  WordInfo> bodyWordFreq = processWords(bodyWords, stopStem);
 
                 for (Map.Entry<String, WordInfo> entry : bodyWordFreq.entrySet()) {
@@ -105,9 +118,9 @@ public class Main {
                         Object[] data = entry.getValue();
                         double cosSimScore = (double) data[0];
                         List<Integer> positions = (List<Integer>) data[1]; // Term positions
-                        String url = crawler.getUrlFromDocId(docId)[0];
-                        String title = crawler.getUrlFromDocId(docId)[1];
-                        Vector<String> content = crawler.getWordFromDocId(docId); // Retrieve full document content
+                        String url = crawler.getUrl(docId);
+                        String title = crawler.getTitle(docId);
+                        Vector<String> content = crawler.getContent(docId); // Retrieve full document content
 
                         System.out.printf("DocID: %d | URL: %s | CosSim: %.5f%n", docId, url, cosSimScore);
                         System.out.println("Title: " + title);
@@ -135,9 +148,9 @@ public class Main {
                         double pageRankScore = (double) data[1];
                         double combinedScore = (double) data[2];
                         List<Integer> positions = (List<Integer>) data[3]; // Term positions
-                        String url = crawler.getUrlFromDocId(docId)[0];
-                        String title = crawler.getUrlFromDocId(docId)[1];
-                        Vector<String> content = crawler.getWordFromDocId(docId); // Retrieve full document content
+                        String url = crawler.getUrl(docId);
+                        String title = crawler.getTitle(docId);
+                        Vector<String> content = crawler.getContent(docId); // Retrieve full document content
 
                         System.out.printf("DocID: %d | URL: %s | CosSim: %.5f | PageRank: %.5f | Combined Score: %.5f%n",
                                 docId, url, cosSimScore, pageRankScore, combinedScore);
@@ -158,7 +171,7 @@ public class Main {
             }
             scanner.close(); // Close scanner when finished
 
-        } catch (IOException | ParserException e) {
+        } catch (IOException e) {
         System.err.println("Error: " + e.getMessage());
         }
 

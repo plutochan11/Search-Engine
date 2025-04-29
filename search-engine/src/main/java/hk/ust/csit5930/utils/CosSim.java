@@ -1,7 +1,11 @@
+package hk.ust.csit5930.utils;
 import jdbm.htree.HTree;
 
 import java.io.IOException;
 import java.util.*;
+
+import hk.ust.csit5930.models.TermInfo;
+
 import java.lang.Math;
 
 public class CosSim {

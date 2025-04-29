@@ -1,20 +1,15 @@
-/* --
-COMP336 Lab1 Exercise
-Student Name:
-Student ID:
-Section:
-Email:
-*/
+package hk.ust.csit5930.utils;
 
 import jdbm.RecordManager;
 import jdbm.RecordManagerFactory;
 import jdbm.htree.HTree;
 import jdbm.helper.FastIterator;
-
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+
+import hk.ust.csit5930.models.WordInfo;
 
 class Posting implements Serializable
 {
@@ -33,7 +28,7 @@ public class InvertedIndex {
 	private RecordManager recman;
 	private HTree hashtable;
 
-	InvertedIndex(String recordmanager, String objectname) throws IOException {
+	public InvertedIndex(String recordmanager, String objectname) throws IOException {
 		recman = RecordManagerFactory.createRecordManager(recordmanager);
 		long recid = recman.getNamedObject(objectname);
 
@@ -44,7 +39,6 @@ public class InvertedIndex {
 			recman.setNamedObject(objectname, hashtable.getRecid());
 		}
 	}
-
 
 	public void finalize() throws IOException {
 		recman.commit();

@@ -1,0 +1,5 @@
+# search-engine/target
+.vscode
+DB
+*.db
+*.lg

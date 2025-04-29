@@ -1,6 +1,10 @@
+package hk.ust.csit5930.utils;
 import jdbm.htree.HTree;
 
 import java.util.*;
+
+import hk.ust.csit5930.App;
+import hk.ust.csit5930.models.TermInfo;
 
 public class SearchEngine {
     private StopStem stopStem;
@@ -20,7 +24,7 @@ public class SearchEngine {
     public Map<String, Object> search(String userQuery) {
         // Process query: tokenize, remove stopwords, and stem
         Vector<String> queryVector = new Vector<>(Arrays.asList(userQuery.split(" ")));
-        List<String> filterQuery = new ArrayList<>(Main.processWords(queryVector, stopStem).keySet());
+        List<String> filterQuery = new ArrayList<>(App.processWords(queryVector, stopStem).keySet());
 
         // Compute cosine similarity scores (Includes positions)
         Map<Integer, Object[]> cosineScores = CosSim.calculateCosSim(filterQuery, termToTermId, bodyIndex, documentSize);

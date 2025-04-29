@@ -1,12 +1,11 @@
-import IRUtilities.*;
+package hk.ust.csit5930.utils;
 import java.io.*;
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.HashSet;
+
+import hk.ust.csit5930.IRUtilities.Porter;
 
 public class StopStem
 {

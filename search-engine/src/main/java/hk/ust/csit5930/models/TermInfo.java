@@ -1,3 +1,4 @@
+package hk.ust.csit5930.models;
 public class TermInfo {
     private String term;
     public int termId;

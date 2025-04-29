@@ -8,7 +8,7 @@
 
 */ 
 
-package IRUtilities;
+package hk.ust.csit5930.IRUtilities;
 
 import java.io.*;
 
