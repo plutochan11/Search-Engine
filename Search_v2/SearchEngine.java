@@ -33,10 +33,11 @@ public class SearchEngine {
     public Map<Integer, Object[]> searchCosSim(String userQuery, Crawler crawler) {
         // Step 1: Extract quoted phrases before preprocessing
         List<String> quotedPhrases = extractQuotedPhrases(userQuery);
-        System.out.println("Quoted Phrases: " + quotedPhrases);
+        //System.out.println("Quoted Phrases: " + quotedPhrases);
 
         // Step 2: Process the rest of the query separately
         List<String> filterQuery = preprocessQuery(userQuery);
+        //System.out.println("filter Phrases: " + filterQuery);
         Map<Integer, Object[]> cosineScores = CosSim.calculateCosSim(filterQuery, termToTermId, titleIndex, bodyIndex, documentSize);
 
 
@@ -92,8 +93,9 @@ public class SearchEngine {
             List<String> snapWords = getCombinedSnippets(bodyTermPositions, bodyWords);
 
             // Step 3: Check if the full phrase exists **in either the title OR body**
-            boolean fullPhraseExistsInTitle = checkPhraseSequence(titleTermPositions, quotedPhrases);
-            boolean fullPhraseExistsInBody = checkPhraseSequence(bodyTermPositions, quotedPhrases);
+            Vector<String> titleWords = Main.tokenizeTitle(title); // Function to tokenize title into words
+            boolean fullPhraseExistsInTitle = checkPhraseSequence( quotedPhrases, titleWords);
+            boolean fullPhraseExistsInBody = checkPhraseSequence(quotedPhrases, bodyWords);
             // Step 4: Add to results if **either title OR body contains the full phrase**
             if (fullPhraseExistsInTitle || fullPhraseExistsInBody) {
                 formattedResults.put(docId, new Object[]{
@@ -197,8 +199,7 @@ public class SearchEngine {
             // Split the quoted phrase into individual words
             String[] words = matcher.group(1).trim().split("\\s+");
             for (String word : words) {
-                if (!word.isEmpty()) {
-                    quotedWords.add(word.toLowerCase()); // Store in lowercase
+                if (!word.isEmpty()) { quotedWords.add(word.toLowerCase()); // Store in lowercase
                 }
             }
         }
@@ -209,50 +210,23 @@ public class SearchEngine {
     /**
      * Helper function to check if a quoted phrase sequence exists in term positions.
      */
-    private static boolean checkPhraseSequence(Map<String, List<Integer>> termPositions,
-                                               List<String> quotedPhrases) {
+
+    private static boolean checkPhraseSequence(List<String> quotedPhrases, Vector<String> words) {
         if (quotedPhrases.isEmpty()) {
-            return true;
+            return true; // No phrase to check
         }
 
-        for (String term : quotedPhrases) {
-            if (!termPositions.containsKey(term)) {
-                return false;
-            }
-        }
-        // Preprocess positions into HashSet for O(1) lookups
-        Map<String, Set<Integer>> positionMap = new HashMap<>();
-        for (Map.Entry<String, List<Integer>> entry : termPositions.entrySet()) {
-            positionMap.put(entry.getKey(), new HashSet<>(entry.getValue()));
-        }
+        // Convert both lists to space-separated lowercase strings for case-insensitive search
+        String wordsString = String.join(" ", words).toLowerCase();
+        String phraseString = String.join(" ", quotedPhrases).toLowerCase();
 
-        String firstTerm = quotedPhrases.get(0);
-        List<Integer> firstTermPositions = termPositions.get(firstTerm);
+        // Check if words contain the full phrase as a contiguous substring
+        boolean found = wordsString.contains(phraseString);
 
-        // Check each potential sequence
-        for (int startPos : firstTermPositions) {
-            boolean fullMatch = true;
-            int currentPos = startPos;
-
-            // Verify consecutive terms
-            for (int i = 1; i < quotedPhrases.size(); i++) {
-                currentPos++;
-                String currentTerm = quotedPhrases.get(i);
-                Set<Integer> validPositions = positionMap.get(currentTerm);
-
-                if (!validPositions.contains(currentPos)) {
-                    fullMatch = false;
-                    break;
-                }
-            }
-
-            if (fullMatch) {
-                return true;
-            }
-        }
-
-        return false;
+        return found;
     }
+
+
 
     public List<String> getCombinedSnippets(Map<String, List<Integer>> termPositions,
                                             List<String> textTokens) {

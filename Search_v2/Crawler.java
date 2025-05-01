@@ -9,6 +9,7 @@ import java.util.*;
 import org.htmlparser.beans.StringBean;
 import org.htmlparser.Parser;
 import org.htmlparser.filters.NodeClassFilter;
+import org.htmlparser.filters.TagNameFilter;
 import org.htmlparser.util.NodeList;
 import org.htmlparser.util.ParserException;
 import org.htmlparser.beans.LinkBean;
@@ -107,22 +108,33 @@ public class Crawler
 		return "Title not found"; // Return fallback if no title exists
 	}
 
-
-	// Extracts the page body
-	public Vector<String> extractWords(String url) throws ParserException
-	{
+	public Vector<String> extractWords(String url) throws ParserException {
 		Vector<String> words = new Vector<>();
 		StringBean sb = new StringBean();
-		sb.setURL(url);;
+		sb.setURL(url);
 		String text = sb.getStrings();
-//		String[] wordsArray = text.split("[\\s\\n]+");
+
+		// Extract title using the `extractTitle` method
+		String title = extractTitle(url);
+
+		// Remove title by starting after its length
+		if (!title.equals("Title not found")) {
+			int titleIndex = text.indexOf(title);
+			if (titleIndex != -1) { // Ensure the title exists in the text
+				text = text.substring(title.length());
+			}
+		}
+
+		// Split the text into words, excluding punctuation
 		String[] wordsArray = text.split("[\\W]+");
 
 		for (String word : wordsArray) {
 			words.add(word);
 		}
+
 		return words;
 	}
+
 
 	// Assigns a unique docId to each URL (bidirectional mapping)
 	private void assignDocId(String url) throws ParserException {

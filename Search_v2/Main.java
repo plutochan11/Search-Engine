@@ -121,14 +121,14 @@ public class Main {
                 if (cosineResults.isEmpty()) {
                     System.out.println("No relevant documents found.");
                 } else {
-                    System.out.println("\nTop 10 Results (Based on Cosine Similarity):");
+                    System.out.println("\nTop 50 Results (Based on Cosine Similarity):");
                     printResults(cosineResults);
                 }
 
                 // Perform combined search (CosSim * PageRank)
                 Map<Integer, Object[]> combinedResults = searchEngine.searchCombined(userQuery, crawler);
                 if (!combinedResults.isEmpty()) {
-                    System.out.println("\nTop 10 Results (Based on Combined Score - CosSim * PageRank):");
+                    System.out.println("\nTop 50 Results (Based on Combined Score - CosSim * PageRank):");
                     printResults(combinedResults);
                 }
 
@@ -210,39 +210,20 @@ public class Main {
         }
     }
 
-    public static Map<String, WordInfo> processWords(Vector<String> words, StopStem stopStem) {
+    // Helper method to process words by removing stopwords and applying stemming
+    public static Map<String,  WordInfo> processWords(Vector<String> words, StopStem stopStem) {
         Map<String, WordInfo> wordInfoMap = new HashMap<>();
         int position = 1;
-
         for (String word : words) {
-            if (word.startsWith("\"") && word.endsWith("\"")) {
-                // Preserve quoted words exactly as they appear (remove quotes)
-                String exactWord = (word.length() > 2) ? word.substring(1, word.length() - 1) : word;
-                wordInfoMap.computeIfAbsent(exactWord, k -> new WordInfo()).addPositionAndIncrementFrequency(position);
-            } else {
-                // Stem and process non-quoted words
-                String lowercaseWord = word.toLowerCase();
-                if (!stopStem.isStopWord(lowercaseWord)) {
-                    String stemmedWord = stopStem.stem(lowercaseWord);
-                    wordInfoMap.computeIfAbsent(stemmedWord, k -> new WordInfo()).addPositionAndIncrementFrequency(position);
-                }
+            if (!stopStem.isStopWord(word)) {
+                String stemmedWord = stopStem.stem(word.toLowerCase());
+                WordInfo wordInfo = wordInfoMap.getOrDefault(stemmedWord, new WordInfo());
+                wordInfo.addPositionAndIncrementFrequency(position);
+                wordInfoMap.put(stemmedWord, wordInfo);
             }
             position++;
         }
-
         return wordInfoMap;
-    }
-
-    public static String getSurroundingWords(Vector<String> content, int position) {
-        List<String> wordList = new ArrayList<>(content); // Convert Vector to List<String>
-
-        if (position < 0 || position >= wordList.size()) {
-            return "Context unavailable"; // Edge case handling
-        }
-        int start = Math.max(0, position - 4); // 2 words before
-        int end = Math.min(wordList.size(), position + 4); // 2 words after (inclusive of query term)
-
-        return String.join(" ", wordList.subList(start, end)); // Extract surrounding words
     }
 
 

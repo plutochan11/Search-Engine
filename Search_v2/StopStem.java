@@ -42,6 +42,9 @@ public class StopStem
 	}
 	public String stem(String str)
 	{
+		if (str == null || str.isEmpty()) {
+			return str;
+		}
 		return porter.stripAffixes(str);
 	}
 	public static void main(String[] arg)
