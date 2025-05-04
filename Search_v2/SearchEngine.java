@@ -31,13 +31,22 @@ public class SearchEngine {
      * Computes cosine similarity ranking.
      */
     public Map<Integer, Object[]> searchCosSim(String userQuery, Crawler crawler) {
+        // Check for empty or blank queries
+        if (userQuery == null || userQuery.trim().isEmpty()) {
+            System.out.println("Empty query detected. Please enter a valid search term.");
+            return Collections.emptyMap();
+        }
         // Step 1: Extract quoted phrases before preprocessing
         List<String> quotedPhrases = extractQuotedPhrases(userQuery);
         //System.out.println("Quoted Phrases: " + quotedPhrases);
 
         // Step 2: Process the rest of the query separately
         List<String> filterQuery = preprocessQuery(userQuery);
-        //System.out.println("filter Phrases: " + filterQuery);
+        // Check if any valid terms remained after processing
+        if (filterQuery.isEmpty()) {
+            System.out.println("No valid search terms found after processing. Please try a different query.");
+            return Collections.emptyMap();
+        }
         Map<Integer, Object[]> cosineScores = CosSim.calculateCosSim(filterQuery, termToTermId, titleIndex, bodyIndex, documentSize);
 
 
@@ -218,7 +227,7 @@ public class SearchEngine {
 
         // Convert both lists to space-separated lowercase strings for case-insensitive search
         String wordsString = String.join(" ", words).toLowerCase();
-        String phraseString = String.join(" ", quotedPhrases).toLowerCase();
+        String phraseString = String.join(" ", quotedPhrases).toLowerCase() + " ";
 
         // Check if words contain the full phrase as a contiguous substring
         boolean found = wordsString.contains(phraseString);

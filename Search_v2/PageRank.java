@@ -27,7 +27,6 @@ public class PageRank {
                         int outgoingLinks = Arrays.stream(linkMatrix[j]).sum(); // Get the number of outgoing links
                         if (outgoingLinks > 0) {
                             rankSum += prevRanks[j] * linkMatrix[j][i] / outgoingLinks; // Divide by outgoing links
-                            System.out.printf("Page %d, j = %d, Rank Sum = %.5f%n", i , j, rankSum);
                         }
                     }
                 }
@@ -36,7 +35,7 @@ public class PageRank {
             }
             normalizeRanks();
         }
-        
+
     }
 
     private void normalizeRanks() {

@@ -157,9 +157,10 @@ public class CosSim {
         for (String term : titleData.keySet()) {
             TermData titleTermData = titleData.get(term);
             TermData bodyTermData = bodyData.get(term);
-            int totalFreq = titleTermData.getFrequency() + bodyTermData.getFrequency();
-            mergedData.put(term, new TermData(term, totalFreq, titleTermData.getTitlePositions(), bodyTermData.getTitlePositions()));
-
+            int titleFreq = titleTermData != null ? titleTermData.getFrequency() : 0;
+            int bodyFreq = bodyTermData != null ? bodyTermData.getFrequency() : 0;
+            int totalFreq = titleFreq + bodyFreq;
+            mergedData.put(term, new TermData(term, totalFreq, titleTermData.getTitlePositions(), (bodyTermData != null) ? bodyTermData.getTitlePositions() : new ArrayList<>()));
         }
 
         for (String term : bodyData.keySet()) {
