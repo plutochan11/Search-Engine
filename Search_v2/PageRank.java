@@ -23,16 +23,20 @@ public class PageRank {
             for (int i = 0; i < numPages; i++) {
                 double rankSum = 0.0;
                 for (int j = 0; j < numPages; j++) {
-                    if (linkMatrix[j][i] == 1) {
-                        int outgoingLinks = Arrays.stream(linkMatrix[j]).sum();
-                        rankSum += prevRanks[j] / outgoingLinks;
+                    if (linkMatrix[j][i] > 0) {
+                        int outgoingLinks = Arrays.stream(linkMatrix[j]).sum(); // Get the number of outgoing links
+                        if (outgoingLinks > 0) {
+                            rankSum += prevRanks[j] * linkMatrix[j][i] / outgoingLinks; // Divide by outgoing links
+                            System.out.printf("Page %d, j = %d, Rank Sum = %.5f%n", i , j, rankSum);
+                        }
                     }
                 }
-                ranks[i] = (1 - dampingFactor) / numPages + dampingFactor * rankSum;
+                // Calculate the new rank
+                ranks[i] = (1 - dampingFactor)  + dampingFactor * rankSum;
             }
+            normalizeRanks();
         }
-
-        normalizeRanks();
+        
     }
 
     private void normalizeRanks() {
