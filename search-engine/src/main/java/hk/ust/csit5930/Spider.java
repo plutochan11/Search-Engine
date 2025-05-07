@@ -462,4 +462,12 @@ public class Spider {
             dbOperator.setup();
         }
     }
+
+    public List<Page> getAllPages() {
+        return dbOperator.getAllPages();
+    }
+
+    public List<Relationship> getAllRelationships() {
+        return dbOperator.getAllRelationships();
+    }
 }
