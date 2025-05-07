@@ -73,8 +73,8 @@ public class CrawlerService {
         List<Relationship> relationships = spider.getAllRelationships();
         
         for (Relationship relationship : relationships) {
-            int fromPageId = relationship.getFromPageId();
-            int toPageId = relationship.getToPageId();
+            int fromPageId = spider.getIdFromUrl(relationship.getParentUrl());
+            int toPageId = spider.getIdFromUrl(relationship.getChildUrl());
             
             // Build parent -> children map
             parentChildRelationships
