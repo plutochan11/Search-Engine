@@ -1,7 +1,7 @@
 ### JDK Version: Recommend higher than or equal to JDK17
 
 ### How to install crawler JAR to local repo: (which is necessary for search-engine's execution
-- Find crawler JAR under **crawler-1.1** and save to your local system
+- Find crawler-1.1.jar and save to your local system
 - Replace the path and run the following code at terminal:
 - ```mvn install:install-file -Dfile=path/to/your-jar-file.jar -DgroupId=hk.ust.csit5930 -DartifactId=crawler -Dversion=1.1 -Dpackaging=jar```
 - If installed successfully, you should find a **/Users/your-user-name/.m2/repository/hk/ust/csit5930/crawler/1.1** folder in Finder (for macOS users)
