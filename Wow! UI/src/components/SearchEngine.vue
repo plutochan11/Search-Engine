@@ -118,7 +118,11 @@ const search = async () => {
         size: 'Unknown',
         keywords: [], // Placeholder
         snippets: result.snippets || [],
-        contextSnippet: createContextSnippet(result.snippets)
+        contextSnippet: createContextSnippet(result.snippets),
+        pageSize: result.pageSize || 0, // Placeholder for page size
+        topTerms: result.topTerms || [], // Placeholder for top terms
+        parentUrls: result.parentUrls || [], // Placeholder for parent URLs
+        childUrls: result.childUrls || [] // Placeholder for child URLs
       };
     });
     
@@ -212,6 +216,26 @@ const handleScroll = () => {
   if (scrollPosition >= pageBottom) {
     loadMore();
   }
+};
+
+// Format file size to human-readable format
+const formatFileSize = (sizeInBytes) => {
+  if (sizeInBytes < 1024) {
+    return sizeInBytes + ' B';
+  } else if (sizeInBytes < 1024 * 1024) {
+    return (sizeInBytes / 1024).toFixed(2) + ' KB';
+  } else if (sizeInBytes < 1024 * 1024 * 1024) {
+    return (sizeInBytes / (1024 * 1024)).toFixed(2) + ' MB';
+  } else {
+    return (sizeInBytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+  }
+};
+
+// Format date to readable string
+const formatDate = (dateString) => {
+  if (!dateString) return 'Unknown';
+  const date = new Date(dateString);
+  return date.toLocaleDateString();
 };
 
 // Attach/detach scroll listener
@@ -315,40 +339,52 @@ onUnmounted(() => {
         <div class="result-header">
           <span class="result-score">
             {{ rankingMethod === 'combined' ? 
-                `Score: ${result.combinedScore.toFixed(4)} (PageRank: ${result.pageRank.toFixed(2)} × CosSim: ${result.score.toFixed(2)})` : 
-                `Similarity: ${result.score.toFixed(4)}` }}
+                `Score: ${result.combinedScore.toFixed(4)}` : 
+                `Score: ${result.score.toFixed(4)}` }}
           </span>
           <a :href="result.url" target="_blank" class="result-title">{{ result.title }}</a>
         </div>
         
         <a :href="result.url" target="_blank" class="result-url">{{ result.url }}</a>
         
-        <!-- Snippets from the search results -->
-        <div v-if="result.snippets && result.snippets.length > 0" class="result-snippets">
-          <div v-for="(snippet, i) in result.snippets" :key="i" class="result-context">
-            <div class="context-snippet">
-              {{ snippet }}
-            </div>
-          </div>
+        <div class="result-metadata">
+          <span>Last modified: {{ formatDate(result.lastModified) }}</span>
+          <span class="metadata-separator">|</span>
+          <span>Size: {{ formatFileSize(result.pageSize) }}</span>
         </div>
         
-        <!-- If no snippets, show formatted context -->
-        <div v-else class="result-context">
-          <div class="context-snippet">
-            <span class="context-before">{{ result.contextSnippet.before }}</span>
-            <span class="context-highlight">{{ result.contextSnippet.highlight }}</span>
-            <span class="context-after">{{ result.contextSnippet.after }}</span>
+        <div class="result-keywords">
+          <span v-for="(term, i) in result.topTerms" :key="i" class="keyword-item">
+            {{ term.key }} ({{ term.value }}){{ i < result.topTerms.length - 1 ? '; ' : '' }}
+          </span>
+        </div>
+        
+        <div class="result-links">
+          <div class="link-section">
+            <h4>Parent Links:</h4>
+            <ul class="link-list">
+              <li v-for="(parentUrl, i) in result.parentUrls" :key="i">
+                <a :href="parentUrl" target="_blank">{{ parentUrl }}</a>
+              </li>
+            </ul>
+          </div>
+          
+          <div class="link-section">
+            <h4>Child Links:</h4>
+            <ul class="link-list">
+              <li v-for="(childUrl, i) in result.childUrls" :key="i">
+                <a :href="childUrl" target="_blank">{{ childUrl }}</a>
+              </li>
+            </ul>
           </div>
         </div>
       </div>
       
-      <!-- Loading indicator at the bottom when auto-loading -->
       <div v-if="hasMoreResults && isLoadingMore" class="loading-more">
         Loading more results...
       </div>
     </div>
     
-    <!-- Only show "No results" message if a search has been performed -->
     <div v-else-if="hasSearched && query" class="no-results">
       No results found for "{{ query }}".
     </div>
@@ -663,5 +699,69 @@ onUnmounted(() => {
   padding: 15px;
   color: #70757a;
   font-style: italic;
+}
+
+/* New styles for updated result format */
+.result-metadata {
+  display: flex;
+  font-size: 13px;
+  color: #70757a;
+  margin: 8px 0;
+}
+
+.metadata-separator {
+  margin: 0 8px;
+}
+
+.result-keywords {
+  margin: 8px 0;
+  font-size: 14px;
+  color: #4d5156;
+}
+
+.keyword-item {
+  display: inline-block;
+}
+
+.result-links {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.link-section {
+  flex: 1;
+  min-width: 250px;
+}
+
+.link-section h4 {
+  font-size: 14px;
+  margin: 0 0 8px 0;
+  color: #202124;
+  font-weight: 500;
+}
+
+.link-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.link-list li {
+  margin-bottom: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.link-list a {
+  color: #1a0dab;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.link-list a:hover {
+  text-decoration: underline;
 }
 </style>
