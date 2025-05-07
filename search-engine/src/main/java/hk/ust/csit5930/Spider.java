@@ -438,6 +438,15 @@ public class Spider {
         this.CONNECTION_TIMEOUT = timeout;
     }
 
+    /**
+     * Get the ID of a page from its URL
+     * @param url The URL of the page
+     * @return The page ID, or -1 if not found
+     */
+    public int getIdFromUrl(String url) {
+        return dbOperator.getIdFromUrl(url);
+    }
+    
     // test use
     public Page getPage(int id) {
         return dbOperator.getPage(id);

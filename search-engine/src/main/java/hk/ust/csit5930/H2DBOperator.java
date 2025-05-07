@@ -156,6 +156,16 @@ public class H2DBOperator {
         }
     }
 
+    /**
+     * Retrieves the page ID for a given URL (alias for getPageId).
+     *
+     * @param url The URL of the page.
+     * @return The page ID, or -1 if not found.
+     */
+    public int getIdFromUrl(String url) {
+        return getPageId(url);
+    }
+
     public String getContent(int id) {
         try (SqlSession session = sqlSessionFactory.openSession()) {
             PageMapper mapper = session.getMapper(PageMapper.class);
